@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { serialize } from 'next-mdx-remote/serialize'
 import { MDXRemote } from 'next-mdx-remote'
 import remarkPlugins from '../../plugins/index.mjs'
+import { remarkComponents } from '../remark'
 
 /**
  * Convert raw Markdown to React
@@ -28,5 +29,5 @@ export default function MarkdownToReact({ markdown }) {
         getMdx()
     }, [markdown])
 
-    return mdx ? <MDXRemote {...mdx} /> : <></>
+    return mdx ? <MDXRemote {...mdx} components={remarkComponents} /> : <></>
 }

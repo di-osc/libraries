@@ -5,6 +5,7 @@ import { MDXRemote, MDXRemoteSerializeResult } from 'next-mdx-remote'
 import path from 'path'
 import Layout from '../src/templates'
 import remarkPlugins from '../plugins/index.mjs'
+import { remarkComponents } from '../src/remark'
 
 import recordSection from '../meta/recordSections'
 import sidebars from '../meta/sidebars.json'
@@ -38,7 +39,7 @@ export type PropsPage = PropsPageBase & {
 const PostPage = ({ mdx: mdx, ...props }: PropsPage) => {
     return (
         <Layout {...props}>
-            <MDXRemote {...mdx} />
+            <MDXRemote {...mdx} components={remarkComponents} />
         </Layout>
     )
 }
