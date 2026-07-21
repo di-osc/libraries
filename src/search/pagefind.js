@@ -1,30 +1,52 @@
-const loadGeneratedPagefind = () => import(/* webpackIgnore: true */ '/pagefind/pagefind.js')
+const loadGeneratedPagefind = attempt => {
+    if (attempt === 0) {
+        return import(/* webpackIgnore: true */ '/pagefind/pagefind.js')
+    }
 
-const cleanUrl = url => url.replace(/\.html(?=$|[?#])/, '')
+    return import(/* webpackIgnore: true */ `/pagefind/pagefind.js?retry=${attempt}`)
+}
+
+const cleanUrl = url => {
+    if (typeof url !== 'string' || !url.trim()) {
+        return null
+    }
+
+    return url.trim().replace(/\.html(?=$|[?#])/, '')
+}
 
 const normalizeResult = (result, page) => {
-    const url = cleanUrl(page.url)
-    const title = page.meta.title
+    const url = cleanUrl(page?.url)
 
-    if (!page.sub_results.length) {
+    if (!url) {
+        return []
+    }
+
+    const title = page?.meta?.title || url
+    const subResults = Array.isArray(page?.sub_results) ? page.sub_results : []
+
+    if (!subResults.length) {
         return [{
             id: url,
             url,
             title,
             section: null,
-            excerpt: page.excerpt,
+            excerpt: page?.excerpt,
             score: result.score,
         }]
     }
 
-    return page.sub_results.map(subResult => {
+    return subResults.flatMap(subResult => {
         const subResultUrl = cleanUrl(subResult.url)
+
+        if (!subResultUrl) {
+            return []
+        }
 
         return {
             id: subResultUrl,
             url: subResultUrl,
             title,
-            section: subResult.title,
+            section: subResult.anchor ? subResult.title : null,
             excerpt: subResult.excerpt,
             score: result.score,
         }
@@ -33,10 +55,15 @@ const normalizeResult = (result, page) => {
 
 export const createPagefindClient = (load = loadGeneratedPagefind) => {
     let modulePromise = null
+    let attempt = 0
 
     const getPagefind = () => {
         if (!modulePromise) {
-            modulePromise = Promise.resolve().then(load).then(module => module.default || module)
+            const loadAttempt = attempt
+
+            modulePromise = Promise.resolve()
+                .then(() => load(loadAttempt))
+                .then(module => module.default || module)
         }
 
         return modulePromise
@@ -58,6 +85,7 @@ export const createPagefindClient = (load = loadGeneratedPagefind) => {
         },
         retry() {
             modulePromise = null
+            attempt += 1
         },
     }
 }

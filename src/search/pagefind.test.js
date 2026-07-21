@@ -8,6 +8,7 @@ const rawPageResult = {
     excerpt: '使用 <mark>时间轴</mark> 管理标注',
     sub_results: [{
         title: 'Annotation 类型',
+        anchor: 'annotation-types',
         url: '/asr-data/annotations.html#annotation-types',
         excerpt: '常用的 <mark>标注</mark> 类型',
     }],
@@ -91,6 +92,79 @@ test('removes html only before URL endings, anchors, and query delimiters', asyn
     }])
 })
 
+test('skips malformed pages and uses the clean URL as fallback title', async () => {
+    const client = createPagefindClient(() => Promise.resolve({
+        search: jest.fn().mockResolvedValue({
+            results: [{
+                score: 1,
+                data: async () => ({ url: null }),
+            }, {
+                score: 1,
+                data: async () => ({ url: '' }),
+            }, {
+                score: 2,
+                data: async () => ({
+                    url: '/asr-data/fallback.html',
+                    excerpt: 'Fallback excerpt',
+                }),
+            }],
+        }),
+    }))
+
+    await expect(client.search('fallback')).resolves.toEqual([{
+        id: '/asr-data/fallback',
+        url: '/asr-data/fallback',
+        title: '/asr-data/fallback',
+        section: null,
+        excerpt: 'Fallback excerpt',
+        score: 2,
+    }])
+})
+
+test('labels page-level sub-results without anchors separately from headings', async () => {
+    const client = createPagefindClient(() => Promise.resolve({
+        search: jest.fn().mockResolvedValue({
+            results: [{
+                score: 8,
+                data: async () => ({
+                    ...rawPageResult,
+                    sub_results: [{
+                        title: '时间轴与标注',
+                        url: '/asr-data/annotations.html',
+                        excerpt: '匹配前言中的 <mark>标注</mark>',
+                    }, {
+                        title: 'Annotation 类型',
+                        anchor: 'annotation-types',
+                        url: '/asr-data/annotations.html#annotation-types',
+                        excerpt: '常用的 <mark>标注</mark> 类型',
+                    }, {
+                        title: 'Malformed heading',
+                        anchor: 'missing-url',
+                        url: null,
+                        excerpt: 'Ignored',
+                    }],
+                }),
+            }],
+        }),
+    }))
+
+    await expect(client.search('标注')).resolves.toEqual([{
+        id: '/asr-data/annotations',
+        url: '/asr-data/annotations',
+        title: '时间轴与标注',
+        section: null,
+        excerpt: '匹配前言中的 <mark>标注</mark>',
+        score: 8,
+    }, {
+        id: '/asr-data/annotations#annotation-types',
+        url: '/asr-data/annotations#annotation-types',
+        title: '时间轴与标注',
+        section: 'Annotation 类型',
+        excerpt: '常用的 <mark>标注</mark> 类型',
+        score: 8,
+    }])
+})
+
 test('keeps a rejected load cached until retry clears it', async () => {
     const error = new Error('Pagefind unavailable')
     const pagefind = {
@@ -103,10 +177,12 @@ test('keeps a rejected load cached until retry clears it', async () => {
 
     await expect(client.search('first')).rejects.toThrow(error)
     await expect(client.search('second')).rejects.toThrow(error)
+    expect(load).toHaveBeenCalledWith(0)
     expect(load).toHaveBeenCalledTimes(1)
 
     client.retry()
 
     await expect(client.search('third')).resolves.toEqual([])
+    expect(load).toHaveBeenNthCalledWith(2, 1)
     expect(load).toHaveBeenCalledTimes(2)
 })
