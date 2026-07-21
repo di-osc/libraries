@@ -8,7 +8,7 @@ const rawPageResult = {
     excerpt: '使用 <mark>时间轴</mark> 管理标注',
     sub_results: [{
         title: 'Annotation 类型',
-        anchor: 'annotation-types',
+        anchor: { id: 'annotation-types' },
         url: '/asr-data/annotations.html#annotation-types',
         excerpt: '常用的 <mark>标注</mark> 类型',
     }],
@@ -134,14 +134,21 @@ test('labels page-level sub-results without anchors separately from headings', a
                         excerpt: '匹配前言中的 <mark>标注</mark>',
                     }, {
                         title: 'Annotation 类型',
-                        anchor: 'annotation-types',
+                        anchor: { id: 'annotation-types' },
                         url: '/asr-data/annotations.html#annotation-types',
                         excerpt: '常用的 <mark>标注</mark> 类型',
+                    }, null, undefined, 'Unexpected value', {
+                        title: 'Missing URL',
                     }, {
                         title: 'Malformed heading',
-                        anchor: 'missing-url',
+                        anchor: { id: 'missing-url' },
                         url: null,
                         excerpt: 'Ignored',
+                    }, {
+                        title: 'Second valid heading',
+                        anchor: { id: 'valid-heading' },
+                        url: '/asr-data/annotations.html#valid-heading',
+                        excerpt: 'Another <mark>标注</mark> result',
                     }],
                 }),
             }],
@@ -161,6 +168,13 @@ test('labels page-level sub-results without anchors separately from headings', a
         title: '时间轴与标注',
         section: 'Annotation 类型',
         excerpt: '常用的 <mark>标注</mark> 类型',
+        score: 8,
+    }, {
+        id: '/asr-data/annotations#valid-heading',
+        url: '/asr-data/annotations#valid-heading',
+        title: '时间轴与标注',
+        section: 'Second valid heading',
+        excerpt: 'Another <mark>标注</mark> result',
         score: 8,
     }])
 })

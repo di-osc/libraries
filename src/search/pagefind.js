@@ -36,6 +36,10 @@ const normalizeResult = (result, page) => {
     }
 
     return subResults.flatMap(subResult => {
+        if (!subResult || typeof subResult !== 'object') {
+            return []
+        }
+
         const subResultUrl = cleanUrl(subResult.url)
 
         if (!subResultUrl) {
