@@ -48,10 +48,10 @@
 Run:
 
 ```bash
-npm install --save-dev pagefind@1.5.2 jest@30.4.2 jest-environment-jsdom@30.4.1 @testing-library/react@16.3.2 @testing-library/jest-dom@7.0.0 @testing-library/user-event@14.6.1 identity-obj-proxy
+npm install --install-strategy=nested --save-dev pagefind@1.5.2 jest@30.4.2 jest-environment-jsdom@30.4.1 @testing-library/react@16.3.2 @testing-library/jest-dom@7.0.0 @testing-library/user-event@14.6.1 identity-obj-proxy
 ```
 
-Expected: the listed packages appear under `devDependencies` and `package-lock.json` is updated. Keep `@docsearch/react` installed until the production search component is replaced in Task 5.
+Expected: the listed packages appear under `devDependencies` and `package-lock.json` is updated. `--install-strategy=nested` keeps the test dependencies nested, preserving existing production resolutions in the legacy v2 lockfile. Keep `@docsearch/react` installed through Task 1; the production search component is replaced in Task 3, and the package is uninstalled in Task 5 after that replacement.
 
 - [ ] **Step 2: Add the Jest command to `package.json`**
 
