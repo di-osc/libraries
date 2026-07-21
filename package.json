@@ -7,6 +7,7 @@
     "build": "next build && npm run sitemap && next export",
     "sitemap": "next-sitemap --config next-sitemap.config.mjs",
     "start": "next start",
+    "test": "jest",
     "lint": "next lint",
     "prettier": "prettier . --write"
   },
@@ -58,5 +59,14 @@
   },
   "engines": {
     "node": "24.x"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^7.0.0",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "identity-obj-proxy": "^3.0.0",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1",
+    "pagefind": "^1.5.2"
   }
 }

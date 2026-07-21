@@ -48,11 +48,10 @@
 Run:
 
 ```bash
-npm uninstall @docsearch/react
 npm install --save-dev pagefind@1.5.2 jest@30.4.2 jest-environment-jsdom@30.4.1 @testing-library/react@16.3.2 @testing-library/jest-dom@7.0.0 @testing-library/user-event@14.6.1 identity-obj-proxy
 ```
 
-Expected: `package.json` no longer contains `@docsearch/react`; the listed packages appear under `devDependencies` and `package-lock.json` is updated.
+Expected: the listed packages appear under `devDependencies` and `package-lock.json` is updated. Keep `@docsearch/react` installed until the production search component is replaced in Task 5.
 
 - [ ] **Step 2: Add the Jest command to `package.json`**
 
@@ -589,7 +588,7 @@ Set these scripts in `package.json`:
 
 - [ ] **Step 2: Remove obsolete Algolia configuration**
 
-Remove the `env.DOCSEARCH_API_KEY` block from `next.config.mjs`. Remove the `/* Algolia DocSearch */` section and all `.DocSearch-*` or `.algolia-*` selectors from `src/styles/layout.sass`. Remove the three `--docsearch-*` custom properties and the unused `.search` rule from `src/styles/navigation.module.sass`. Delete `src/styles/search.sass` after confirming nothing imports it.
+Uninstall `@docsearch/react` after replacing the production search component: `npm uninstall @docsearch/react`. Remove the `env.DOCSEARCH_API_KEY` block from `next.config.mjs`. Remove the `/* Algolia DocSearch */` section and all `.DocSearch-*` or `.algolia-*` selectors from `src/styles/layout.sass`. Remove the three `--docsearch-*` custom properties and the unused `.search` rule from `src/styles/navigation.module.sass`. Delete `src/styles/search.sass` after confirming nothing imports it.
 
 - [ ] **Step 3: Run tests and build the real index**
 
