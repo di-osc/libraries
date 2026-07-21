@@ -1,0 +1,83 @@
+---
+title: asr-data
+teaser: 面向自动语音识别的数据模型、音频处理与 SQLite 存储库
+section: asr-data
+menu:
+  - ['功能概览', 'features']
+  - ['安装', 'installation']
+  - ['快速开始', 'quickstart']
+  - ['核心概念', 'concepts']
+---
+
+`asr-data` 是一个面向 ASR（Automatic Speech Recognition，自动语音识别）
+数据管理的 Rust / Python 库。它把音频、转写、说话人、语言和模型预测组织成
+统一的数据模型，并通过 SQLite 文件持久化。
+
+项目源码位于 [di-osc/asr-data](https://github.com/di-osc/asr-data)。
+
+## 功能概览 {id="features"}
+
+- 使用 `Audio` 保存音频来源、元数据以及每个声道的时间轴。
+- 使用 `Timeline` 管理语音、静音、转写、说话人和语言等标注。
+- 使用 `Waveform` 解码、切片、拆分声道、混音、归一化和重采样。
+- 使用 `AudioDB` 将数据保存在可查询的 SQLite 数据库中。
+- 核心由 Rust 实现，并提供带类型提示的 Python API。
+
+## 安装 {id="installation"}
+
+Python 版本要求为 3.10 或更高：
+
+```bash
+pip install asr-data
+```
+
+Rust 项目可以直接添加 crate：
+
+```bash
+cargo add asr-data
+```
+
+## 快速开始 {id="quickstart"}
+
+下面的示例从音频文件创建记录，写入一条模型转写，并保存到数据库：
+
+```python
+from asr_data import Audio, AudioDB
+
+audio = Audio.from_file("audio.wav", id="call-001")
+audio.metadata["split"] = "train"
+
+audio.timeline("mono").add_transcription(
+    0,
+    1_200,
+    "你好，世界",
+    source="qwen-asr",
+    source_kind="model",
+    language="zh",
+    confidence=0.96,
+)
+
+db = AudioDB("dataset.sqlite")
+db.insert(audio)
+
+loaded = db["call-001"]
+print(loaded.timeline("mono").transcript().text)
+```
+
+<Infobox title="时间单位">
+
+所有标注范围和音频时长均使用毫秒。上例中的 `0` 和 `1_200` 表示从 0 ms
+到 1200 ms。
+
+</Infobox>
+
+## 核心概念 {id="concepts"}
+
+| 类型 | 用途 |
+| --- | --- |
+| `Audio` | 一条音频记录，包含来源、ID、时长、元数据和多个声道时间轴 |
+| `Waveform` | 解码后的浮点音频样本及其采样率、声道信息 |
+| `Timeline` | 某个声道上按时间排列的标注集合 |
+| `Annotation` | 具有时间范围、类型、状态、来源和置信度的标注 |
+| `Transcript` | 从最终转写或句子标注组合得到的文本 |
+| `AudioDB` | 保存和查询 `Audio` 记录的 SQLite 数据库 |

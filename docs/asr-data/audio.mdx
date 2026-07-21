@@ -1,0 +1,106 @@
+---
+title: 音频与波形
+teaser: 创建 Audio、加载 Waveform，并处理采样率和声道
+section: asr-data
+menu:
+  - ['创建音频', 'create']
+  - ['加载波形', 'load']
+  - ['波形处理', 'processing']
+  - ['多声道', 'channels']
+---
+
+## 创建音频 {id="create"}
+
+`Audio` 支持文件、URL、编码后的字节以及 PCM S16LE 字节：
+
+```python
+from asr_data import Audio
+
+from_file = Audio.from_file("audio.wav", id="file-001")
+from_url = Audio.from_url("https://example.com/audio.wav", id="url-001")
+
+with open("audio.wav", "rb") as file:
+    from_bytes = Audio.from_bytes(file.read(), id="bytes-001")
+
+from_pcm = Audio.from_pcm(
+    b"\0\0" * 16_000,
+    sample_rate=16_000,
+    channels=1,
+    id="pcm-001",
+)
+```
+
+未传入 `id` 时，库会自动创建唯一 ID。业务系统通常应显式提供稳定 ID，方便数据库
+更新、分页和跨系统关联。
+
+## 加载波形 {id="load"}
+
+同步加载返回 `Waveform`：
+
+```python
+waveform = from_file.load()
+
+print(waveform.sample_rate)
+print(waveform.channels)
+print(waveform.frame_count)
+print(waveform.duration_ms)
+```
+
+在异步程序中使用 `aload()`，URL 下载不会阻塞事件循环：
+
+```python
+waveform = await from_url.aload()
+```
+
+`numpy()` 返回 `float32` NumPy 数组。创建 `Waveform` 时输入数组会被复制，后续修改
+原数组不会改变波形对象。
+
+```python
+samples = waveform.numpy()
+print(samples.dtype)
+```
+
+## 波形处理 {id="processing"}
+
+所有变换都会返回新的 `Waveform`：
+
+```python
+normalized = waveform.normalize()
+resampled = normalized.resample(16_000)
+clip = resampled.slice_ms(1_000, 3_000)
+```
+
+常用方法：
+
+| 方法 | 作用 |
+| --- | --- |
+| `normalize()` | 将波形归一化 |
+| `resample(sample_rate)` | 转换采样率 |
+| `slice_ms(start_ms, end_ms)` | 按毫秒截取波形 |
+| `to_mono()` | 将多声道波形混合为单声道 |
+| `channel(index)` | 提取指定声道 |
+| `display(autoplay=False)` | 在 IPython / Notebook 中播放 |
+
+## 多声道 {id="channels"}
+
+波形的声道处理与标注时间轴是两套显式操作。提取左、右声道不会自动移动或合并标注：
+
+```python
+waveform = from_file.load()
+left_audio = waveform.channel(0)
+right_audio = waveform.channel(1)
+
+from_file.ensure_timeline("left").add_transcription(0, 800, "客户说话")
+from_file.ensure_timeline("right").add_transcription(0, 900, "坐席说话")
+```
+
+`timeline()` 只查询时间轴，不存在时返回 `None`；需要创建时使用
+`ensure_timeline()`。`"mono"` 时间轴始终存在。
+
+```python
+right = from_file.timeline("right")
+if right is None:
+    right = from_file.ensure_timeline("right")
+
+from_file.remove_timeline("right")
+```

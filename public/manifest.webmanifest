@@ -1,0 +1,9 @@
+{
+    "theme_color": "#09a3d5",
+    "background_color": "#ffffff",
+    "display": "minimal-ui",
+    "scope": "/",
+    "start_url": "/",
+    "name": "di-osc Libraries",
+    "short_name": "Libraries"
+}
