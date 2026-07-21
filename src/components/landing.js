@@ -31,9 +31,7 @@ export const LandingHeader = ({ style = {}, children }) => {
 export const LandingTitle = ({ children }) => <h1 className={classes['title']}>{children}</h1>
 
 export const LandingSubtitle = ({ children }) => (
-    <h2>
-        <span className={classNames(classes['label'], classes['subtitle'])}>{children}</span>
-    </h2>
+    <p className={classes['subtitle']}>{children}</p>
 )
 
 export const LandingGrid = ({ cols = 3, blocks = false, style, children }) => (

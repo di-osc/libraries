@@ -26,7 +26,11 @@ export default function Navigation({ title, items = [], section, children }) {
     return (
         <nav className={classes.root}>
             <Link to="/" aria-label={title} noLinkLayout>
-                <span className={classes.title}>{title}</span>
+                <span className={classes.title}>
+                    <span className={classes['title-name']}>di-osc</span>
+                    <span className={classes['title-divider']} aria-hidden="true" />
+                    <span className={classes['title-product']}>docs</span>
+                </span>
             </Link>
             <div className={classes.menu}>
                 <NavigationDropdown items={items} section={section} />

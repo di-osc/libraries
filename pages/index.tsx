@@ -13,8 +13,8 @@ export default function Home() {
     return (
         <Layout>
             <LandingHeader>
-                <LandingTitle>di-osc Libraries</LandingTitle>
-                <LandingSubtitle>开源库文档中心</LandingSubtitle>
+                <LandingTitle>开源库文档</LandingTitle>
+                <LandingSubtitle>API 参考、使用指南与最佳实践</LandingSubtitle>
             </LandingHeader>
             <LandingGrid blocks>
                 <LandingCard title="asr-data" url="/asr-data" button="查看文档">
