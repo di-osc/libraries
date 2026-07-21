@@ -1,0 +1,23 @@
+[
+    {
+        "section": "asr-data",
+        "items": [
+            {
+                "label": "开始使用",
+                "items": [
+                    { "text": "概览与安装", "url": "/asr-data" },
+                    { "text": "音频与波形", "url": "/asr-data/audio" },
+                    { "text": "时间轴与标注", "url": "/asr-data/annotations" },
+                    { "text": "SQLite 数据库", "url": "/asr-data/database" }
+                ]
+            },
+            {
+                "label": "参考",
+                "items": [
+                    { "text": "Python API", "url": "/asr-data/api" },
+                    { "text": "Rust API", "url": "/asr-data/rust" }
+                ]
+            }
+        ]
+    }
+]

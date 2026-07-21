@@ -1,0 +1,117 @@
+---
+title: 时间轴与标注
+teaser: 表达语音片段、转写、说话人以及模型和流水线产物
+section: asr-data
+menu:
+  - ['添加标注', 'adding']
+  - ['标注类型', 'kinds']
+  - ['状态与来源', 'provenance']
+  - ['生成转写', 'transcript']
+  - ['查询和维护', 'manage']
+---
+
+每个 `Timeline` 对应 `Audio` 的一个声道，并保存该声道上的时间范围标注。
+
+## 添加标注 {id="adding"}
+
+```python
+timeline = audio.timeline("mono")
+
+timeline.add_speech(0, 1_200, confidence=0.98)
+timeline.add_silence(1_200, 1_500)
+
+timeline.add_transcription(
+    0,
+    1_200,
+    "hello world",
+    source="whisper-large",
+    source_kind="model",
+    language="en",
+    confidence=0.91,
+)
+
+timeline.add_speaker(
+    0,
+    1_200,
+    "speaker-1",
+    source="diarization",
+    source_kind="stage",
+)
+```
+
+## 标注类型 {id="kinds"}
+
+Python 的 `AnnotationKind` 包含以下值：
+
+```text
+speech, silence, token, transcription, sentence, speaker,
+language, hotword, acoustic_event, diagnostic
+```
+
+Python 绑定目前提供 `add_speech()`、`add_silence()`、`add_transcription()` 和
+`add_speaker()` 作为常用快捷方法。
+
+## 状态与来源 {id="provenance"}
+
+标注状态 `AnnotationStatus`：
+
+| 值 | 含义 |
+| --- | --- |
+| `partial` | 尚未稳定的中间结果 |
+| `final` | 最终结果；会参与组合转写 |
+| `revised` | 已经修订的结果 |
+| `deleted` | 逻辑删除的结果 |
+
+来源类别 `AnnotationSourceKind`：
+
+| 值 | 适用场景 |
+| --- | --- |
+| `user` | 人工标注或人工修订 |
+| `model` | ASR、VAD、说话人识别等模型输出 |
+| `stage` | 导入、后处理、切句等流水线阶段产物 |
+| `system` | 系统生成的信息 |
+
+建议同时设置 `source_kind` 和稳定的 `source` 名称。例如把模型来源记录为
+`source_kind="model"`、`source="qwen3-asr"`。
+
+## 生成转写 {id="transcript"}
+
+`transcript()` 会按开始时间组合最终状态的转写与句子标注：
+
+```python
+result = timeline.transcript()
+print(result.text)
+print(result.language)
+```
+
+只读取指定模型的结果：
+
+```python
+prediction = timeline.transcript_by_source(
+    "whisper-large",
+    source_kind="model",
+)
+```
+
+## 查询和维护 {id="manage"}
+
+```python
+items = timeline.annotations_by_source(
+    "whisper-large",
+    source_kind="model",
+)
+
+changed = timeline.relabel_annotations_source(
+    "raw-whisper",
+    "whisper-large",
+    from_source_kind="stage",
+    to_source_kind="model",
+)
+
+removed = timeline.remove_annotations_by_source(
+    "obsolete-model",
+    source_kind="model",
+)
+```
+
+修改完成后调用 `audio.validate()`，可检查音频 ID、时长和各声道时间轴是否一致。

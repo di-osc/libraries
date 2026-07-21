@@ -1,0 +1,31 @@
+{
+    "title": "di-osc Libraries",
+    "description": "di-osc 维护的开源库文档中心。",
+    "slogan": "Documentation for libraries maintained by di-osc",
+    "domain": "libraries.vercel.app",
+    "company": "di-osc",
+    "companyUrl": "https://github.com/di-osc",
+    "repo": "di-osc/libraries",
+    "theme": "#09a3d5",
+    "sections": [
+        { "id": "asr-data", "title": "asr-data Documentation", "theme": "blue" }
+    ],
+    "navigation": [
+        { "text": "asr-data", "url": "/asr-data" }
+    ],
+    "footer": [
+        {
+            "label": "Libraries",
+            "items": [
+                { "text": "asr-data", "url": "/asr-data" }
+            ]
+        },
+        {
+            "label": "Source",
+            "items": [
+                { "text": "Documentation", "url": "https://github.com/di-osc/libraries" },
+                { "text": "asr-data", "url": "https://github.com/di-osc/asr-data" }
+            ]
+        }
+    ]
+}

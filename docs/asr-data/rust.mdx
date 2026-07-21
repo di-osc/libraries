@@ -1,0 +1,72 @@
+---
+title: Rust API
+teaser: 在 Rust 项目中使用 asr-data 的数据模型和 SQLite 存储
+section: asr-data
+menu:
+  - ['安装', 'installation']
+  - ['音频记录', 'audio']
+  - ['数据库', 'database']
+  - ['公开类型', 'exports']
+---
+
+## 安装 {id="installation"}
+
+```bash
+cargo add asr-data
+```
+
+crate 使用 Rust 2024 edition，默认构建纯 Rust 核心。`python-bindings` feature
+用于构建 Python 扩展，普通 Rust 项目无需启用。
+
+## 音频记录 {id="audio"}
+
+```rust
+use asr_data::{Audio, AudioChannel, AudioSource};
+
+let mut audio = Audio::with_id(
+    "call-001",
+    AudioSource::from_path("audio.wav"),
+);
+
+audio.metadata.insert(
+    "split".to_string(),
+    serde_json::json!("train"),
+);
+
+let mono = audio
+    .timeline(AudioChannel::Mono)?
+    .expect("mono timeline always exists");
+```
+
+音频也可以从 URL、编码字节、base64 或 PCM S16LE 创建。`Audio::load()`
+返回解码后的 `Waveform`，`Audio::aload()` 提供异步加载。
+
+## 数据库 {id="database"}
+
+```rust
+use asr_data::{AudioDb, AudioDbMode, AudioQuery};
+
+let db = AudioDb::open("dataset.sqlite", AudioDbMode::ReadWrite)?;
+db.insert(&audio)?;
+
+let loaded = db.get("call-001")?;
+let page = db.query(&AudioQuery::default())?;
+```
+
+`AudioQuery` 支持 `limit`、`after`、最短/最长时长和 JSON 元数据过滤。
+单次查询最多返回 `MAX_QUERY_LIMIT` 条记录。
+
+## 公开类型 {id="exports"}
+
+主要公开接口包括：
+
+- 数据模型：`Audio`、`Timeline`、`Annotation`、`Transcript`、`TextSpan`、`Token`
+- 音频：`AudioSource`、`AudioFormat`、`AudioEncoding`、`AudioChannel`、`Waveform`
+- 时间：`DurationMs`、`SampleIndex`、`TimeRange`
+- 数据库：`AudioDb`、`AudioDbMode`、`AudioDbInfo`、`AudioQuery`
+- 流式处理：`AudioBytesStream`、`AudioChunk`、`AudioChunkList`
+- 评测：`compute_cer`、`normalize_for_cer`、`CerStats`
+- 音频提取：`extract_embedded_audio`、`extract_embedded_audio_from_db`
+
+完整定义以 [crate 源码](https://github.com/di-osc/asr-data/blob/main/src/lib.rs)
+和生成的 rustdoc 为准。
