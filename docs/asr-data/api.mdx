@@ -3,6 +3,7 @@ title: Python API
 version: 0.1.1
 section: asr-data
 menu:
+  - ['normalize_zh', 'normalize-zh']
   - ['AudioSource', 'audio-source']
   - ['Audio', 'audio']
   - ['AudioChunk', 'audio-chunk']
@@ -24,6 +25,27 @@ menu:
   - ['AnnotationPayload', 'annotation-payload-alias']
   - ['AsrDataError', 'asr-data-error']
 ---
+
+## normalize_zh {id="normalize-zh",tag="function"}
+
+使用内嵌的中文 TN 规则，把书写形式转换为适合 ASR 比较的口语形式。FST 资源随
+`asr-data` 一起提供，不需要调用外部服务。
+
+> #### Example
+>
+> ```python
+> from asr_data import normalize_zh
+>
+> text = normalize_zh("2024年")
+> print(text)  # 二零二四年
+> ```
+
+| Name        | Description                   |
+| ----------- | ----------------------------- |
+| `text`      | 需要归一化的中文文本。~~str~~ |
+| **RETURNS** | 归一化后的文本。~~str~~       |
+
+处理失败时抛出 [`AsrDataError`](#asr-data-error)。
 
 ## AudioSource {id="audio-source",tag="class"}
 

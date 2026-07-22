@@ -17,6 +17,7 @@
     "Token": "/asr-data/api#token",
     "Transcript": "/asr-data/api#transcript",
     "Transcription": "/asr-data/api#transcription",
+    "normalize_zh": "/asr-data/api#normalize-zh",
     "VadOptions": "/vad-burn/api#vad-options",
     "VadSegment": "/vad-burn/api#vad-segment",
     "Waveform": "/vad-burn/api#waveform",
