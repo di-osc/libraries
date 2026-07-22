@@ -244,6 +244,28 @@ test('searches and renders result links with path and highlighted excerpt', asyn
     expect(screen.getByText('安装', { selector: 'mark' })).toBeInTheDocument()
 })
 
+test('clicking a same-page result closes the modal and restores page state without cancelling navigation', async () => {
+    document.body.style.overflow = 'clip'
+    const user = userEvent.setup()
+    await openSearch(user, createClient({
+        search: jest.fn().mockResolvedValue([{
+            id: 'same-page-section',
+            url: '#same-page-section',
+            title: '当前页面章节',
+        }]),
+    }))
+    await user.type(screen.getByRole('combobox'), '章节')
+    const result = await screen.findByRole('option', { name: '当前页面章节' })
+    const root = document.getElementById('__next')
+
+    const navigationAllowed = fireEvent.click(result)
+
+    expect(navigationAllowed).toBe(true)
+    expect(screen.queryByRole('dialog', { name: '搜索文档' })).not.toBeInTheDocument()
+    expect(root).not.toHaveAttribute('inert')
+    expect(document.body.style.overflow).toBe('clip')
+})
+
 test('shows loading and then the no-results state', async () => {
     const pending = deferred()
     const client = createClient({ search: jest.fn().mockReturnValue(pending.promise) })
@@ -369,23 +391,28 @@ test('Arrow navigation scrolls the newly active option into view', async () => {
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' })
 })
 
-test('Enter immediately activates the initially selected first result', async () => {
+test('Enter activates a same-page result after closing the modal and restoring page state', async () => {
+    document.body.style.overflow = 'clip'
     const client = createClient({
         search: jest.fn().mockResolvedValue([
-            { id: 'one', url: '/one', title: '第一个结果' },
+            { id: 'one', url: '#one', title: '第一个结果' },
             { id: 'two', url: '/two', title: '第二个结果' },
         ]),
     })
-    const click = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const click = jest.spyOn(HTMLAnchorElement.prototype, 'click')
     const user = userEvent.setup()
     await openSearch(user, client)
 
     await user.type(screen.getByRole('combobox'), '结果')
     const options = await screen.findAllByRole('option')
+    const root = document.getElementById('__next')
     await user.keyboard('{Enter}')
 
     expect(click).toHaveBeenCalledTimes(1)
     expect(click.mock.instances[0]).toBe(options[0])
+    expect(screen.queryByRole('dialog', { name: '搜索文档' })).not.toBeInTheDocument()
+    expect(root).not.toHaveAttribute('inert')
+    expect(document.body.style.overflow).toBe('clip')
     click.mockRestore()
 })
 

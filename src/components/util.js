@@ -4,8 +4,7 @@ export const DEFAULT_BRANCH = 'main'
 export const repo = siteMetadata.repo
 
 /**
- * This is used to provide selectors for headings so they can be crawled by
- * Algolia's DocSearch
+ * Shared class name for visible heading text and heading permalink anchors.
  */
 export const headingTextClassName = 'heading-text'
 

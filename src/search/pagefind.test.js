@@ -58,6 +58,34 @@ test('normalizes heading sub-results into stable search objects', async () => {
     }])
 })
 
+test('normalizes an h1 sub-result as a page result', async () => {
+    const client = createPagefindClient(() => Promise.resolve({
+        search: jest.fn().mockResolvedValue({
+            results: [{
+                score: 8,
+                data: async () => ({
+                    ...rawPageResult,
+                    sub_results: [{
+                        title: '时间轴与标注',
+                        anchor: { element: 'h1', id: 'timeline-and-annotations' },
+                        url: '/asr-data/annotations.html#timeline-and-annotations',
+                        excerpt: '使用 <mark>时间轴</mark> 管理标注',
+                    }],
+                }),
+            }],
+        }),
+    }))
+
+    await expect(client.search('时间轴')).resolves.toEqual([{
+        id: '/asr-data/annotations',
+        url: '/asr-data/annotations',
+        title: '时间轴与标注',
+        section: null,
+        excerpt: '使用 <mark>时间轴</mark> 管理标注',
+        score: 8,
+    }])
+})
+
 test('removes html only before URL endings, anchors, and query delimiters', async () => {
     const client = createPagefindClient(() => Promise.resolve({
         search: jest.fn().mockResolvedValue({

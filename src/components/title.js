@@ -44,7 +44,7 @@ export default function Title({
             {(image || source) && (
                 <div className={classes.corner}>
                     {source && (
-                        <Button to={source} icon="code">
+                        <Button to={source} icon="code" data-pagefind-ignore="">
                             Source
                         </Button>
                     )}

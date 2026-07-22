@@ -46,11 +46,14 @@ const normalizeResult = (result, page) => {
             return []
         }
 
+        const isPageHeading = subResult.anchor?.element === 'h1'
+        const normalizedUrl = isPageHeading ? url : subResultUrl
+
         return {
-            id: subResultUrl,
-            url: subResultUrl,
+            id: normalizedUrl,
+            url: normalizedUrl,
             title,
-            section: subResult.anchor ? subResult.title : null,
+            section: subResult.anchor && !isPageHeading ? subResult.title : null,
             excerpt: subResult.excerpt,
             score: result.score,
         }

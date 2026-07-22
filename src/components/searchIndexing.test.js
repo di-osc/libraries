@@ -21,8 +21,8 @@ jest.mock('./readnext', () => function MockReadNext({ title }) {
     return <span>Read next: {title}</span>
 })
 
-jest.mock('./button', () => function MockButton({ children }) {
-    return <span>{children}</span>
+jest.mock('./button', () => function MockButton({ children, ...props }) {
+    return <span data-pagefind-ignore={props['data-pagefind-ignore']}>{children}</span>
 })
 
 jest.mock('./seo', () => function MockSeo() {
@@ -65,6 +65,12 @@ test('Title exposes Pagefind title metadata on its final h1', () => {
     const heading = screen.getByRole('heading', { level: 1 })
     expect(heading).toHaveAttribute('data-pagefind-meta', 'title')
     expect(heading).toHaveAttribute('data-track-heading', 'document')
+})
+
+test('Title excludes its source action from the Pagefind index', () => {
+    render(<Title title="Source document" source="module.py" />)
+
+    expect(screen.getByText('Source')).toHaveAttribute('data-pagefind-ignore', '')
 })
 
 test('heading DOM attributes are forwarded without leaking custom heading props', () => {

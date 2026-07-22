@@ -606,7 +606,7 @@ Expected: tests pass; Next export succeeds; Pagefind reports 6 indexed documenta
 Run:
 
 ```bash
-rg -n "data-pagefind-body|data-pagefind-ignore" out/asr-data/index.html
+rg -n "data-pagefind-body|data-pagefind-ignore" out/asr-data.html
 find out/pagefind -type f | sort | sed -n '1,30p'
 ```
 

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useId, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import PropTypes from 'prop-types'
 import classNames from 'classnames'
 
@@ -306,6 +306,7 @@ export default function Search({ client }) {
                             aria-selected={index === selectedIndex}
                             href={result.url}
                             tabIndex={-1}
+                            onClick={() => flushSync(close)}
                             onMouseEnter={() => setSelectedIndex(index)}
                         >
                             <strong>{result.title}</strong>
