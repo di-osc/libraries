@@ -8,6 +8,9 @@ menu:
   - ['AudioChunk', 'audio-chunk']
   - ['AudioDoc', 'audio-doc']
   - ['Timeline', 'timeline']
+  - ['TimelineEvaluation', 'timeline-evaluation']
+  - ['TranscriptionEvaluation', 'transcription-evaluation']
+  - ['SpeechEvaluation', 'speech-evaluation']
   - ['ReferenceAnnotations', 'reference-annotations']
   - ['PredictionAnnotations', 'prediction-annotations']
   - ['Token', 'token']
@@ -467,6 +470,105 @@ source 约束。
 
 所有 `add_*()` 都立即校验 `0 <= start_ms <= end_ms <= timeline.duration_ms`。内
 容完全相同的重复添加会返回已有 annotation，不会插入第二条记录。
+
+## Timeline.eval {id="timeline-eval",tag="method"}
+
+使用 reference 评估指定来源的 prediction。转写与 Speech 可以来自不同模型，也可以
+只评测其中一项。转写默认先执行内嵌中文 TN，再计算 CER。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioDoc, AudioSource
+> from asr_data.annotation import Transcription
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> doc = AudioDoc(AudioSource.from_url(URL))
+> timeline = doc.ensure_timeline("mono", duration_ms=4_204)
+> text = "甚至出现交易几乎停滞的情况"
+>
+> timeline.reference.add_speech(0, timeline.duration_ms)
+> timeline.reference.add_transcription(
+>     0, timeline.duration_ms, Transcription(text, language="zh")
+> )
+> timeline.prediction.add_speech(
+>     0, timeline.duration_ms, source="silero-vad"
+> )
+> timeline.prediction.add_transcription(
+>     0,
+>     timeline.duration_ms,
+>     Transcription(text, language="zh"),
+>     source="qwen-asr",
+> )
+>
+> result = timeline.eval(
+>     transcription="qwen-asr",
+>     speech="silero-vad",
+> )
+> print(result.transcription.cer, result.speech.f1)
+> ```
+
+| Name            | Description                                        |
+| --------------- | -------------------------------------------------- |
+| _keyword-only_  |                                                    |
+| `transcription` | 要评测的转写 prediction 来源。~~Optional[str]~~    |
+| `speech`        | 要评测的 Speech prediction 来源。~~Optional[str]~~ |
+| `normalize`     | 是否执行内嵌中文 TN，默认为 `True`。~~bool~~       |
+| **RETURNS**     | 本次请求的评测结果。~~TimelineEvaluation~~         |
+
+至少需要提供 `transcription` 或 `speech`。对应的 reference 或指定来源 prediction
+不存在时抛出 [`AsrDataError`](#asr-data-error)。
+
+## TimelineEvaluation {id="timeline-evaluation",tag="class"}
+
+`Timeline.eval()` 的组合结果。没有请求的评测项为 `None`。
+
+| Name            | Description                                         |
+| --------------- | --------------------------------------------------- |
+| `transcription` | 转写评测结果。~~Optional[TranscriptionEvaluation]~~ |
+| `speech`        | Speech 评测结果。~~Optional[SpeechEvaluation]~~     |
+
+## TranscriptionEvaluation {id="transcription-evaluation",tag="class"}
+
+转写的原始文本、标准化文本与字符级指标。
+
+| Name                    | Description                          |
+| ----------------------- | ------------------------------------ |
+| `source`                | prediction 来源。~~str~~             |
+| `reference`             | 原始参考文本。~~str~~                |
+| `hypothesis`            | 原始预测文本。~~str~~                |
+| `normalized_reference`  | 标准化后的参考文本。~~str~~          |
+| `normalized_hypothesis` | 标准化后的预测文本。~~str~~          |
+| `normalization`         | `"zh_tn"` 或 `"none"`。~~str~~       |
+| `matches`               | 匹配字符数。~~int~~                  |
+| `substitutions`         | 替换字符数。~~int~~                  |
+| `deletions`             | 删除字符数。~~int~~                  |
+| `insertions`            | 插入字符数。~~int~~                  |
+| `reference_chars`       | 参考文本字符数。~~int~~              |
+| `hypothesis_chars`      | 预测文本字符数。~~int~~              |
+| `cer`                   | 字符错误率。~~float~~                |
+| `precision`             | 字符级准确率。~~float~~              |
+| `recall`                | 字符级召回率。~~float~~              |
+| `f1`                    | 字符级 F1。~~float~~                 |
+| `exact_match`           | 标准化后的文本是否完全相同。~~bool~~ |
+
+## SpeechEvaluation {id="speech-evaluation",tag="class"}
+
+基于毫秒区间计算的 Speech 检测结果。评测前会合并重叠或首尾相接的区间。
+
+| Name                | Description                               |
+| ------------------- | ----------------------------------------- |
+| `source`            | prediction 来源。~~str~~                  |
+| `reference_ms`      | 参考人声总时长。~~int~~                   |
+| `predicted_ms`      | 预测人声总时长。~~int~~                   |
+| `true_positive_ms`  | 正确预测为人声的时长。~~int~~             |
+| `true_negative_ms`  | 正确预测为非人声的时长。~~int~~           |
+| `false_positive_ms` | 误报人声的时长。~~int~~                   |
+| `false_negative_ms` | 漏报人声的时长。~~int~~                   |
+| `precision`         | 区间准确率。~~float~~                     |
+| `recall`            | 区间召回率。~~float~~                     |
+| `f1`                | 区间 F1。~~float~~                        |
+| `iou`               | reference 与 prediction 的 IoU。~~float~~ |
 
 ## ReferenceAnnotations {id="reference-annotations",tag="class"}
 
