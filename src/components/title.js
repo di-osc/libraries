@@ -56,7 +56,7 @@ export default function Title({
                     )}
                 </div>
             )}
-            <H1 className={classes.h1} id={id} {...props}>
+            <H1 className={classes.h1} id={id} data-pagefind-meta="title" {...props}>
                 {title}
             </H1>
             {(tag || version) && (

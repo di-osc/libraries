@@ -4,6 +4,7 @@ import classNames from 'classnames'
 
 import Navigation from '../components/navigation'
 import Progress from '../components/progress'
+import Search from '../components/search'
 import Footer from '../components/footer'
 import SEO from '../components/seo'
 import Docs from './docs'
@@ -23,7 +24,10 @@ export default function Layout({ children, ...pageContext }) {
                 items={siteMetadata.navigation}
                 section={section}
             >
-                <Progress />
+                <>
+                    <Search />
+                    <Progress />
+                </>
             </Navigation>
             {section ? (
                 <Docs pageContext={pageContext}>{children}</Docs>

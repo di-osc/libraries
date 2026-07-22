@@ -9,8 +9,10 @@ const patterns = {
     blue: patternBlue,
 }
 
-export const Content = ({ Component = 'div', className, children }) => (
-    <Component className={classNames(classes.content, className)}>{children}</Component>
+export const Content = ({ Component = 'div', className, children, ...props }) => (
+    <Component className={classNames(classes.content, className)} {...props}>
+        {children}
+    </Component>
 )
 
 export default function Main({
@@ -29,7 +31,13 @@ export default function Main({
 
     return (
         <main className={mainClassNames}>
-            {wrapContent ? <Content Component="article">{children}</Content> : children}
+            {wrapContent ? (
+                <Content Component="article" data-pagefind-body="">
+                    {children}
+                </Content>
+            ) : (
+                children
+            )}
             {asides && (
                 <div className={classes.asides} style={{ backgroundImage: `url(${pattern.src}` }} />
             )}

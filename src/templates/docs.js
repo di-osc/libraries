@@ -34,14 +34,16 @@ export default function Docs({ pageContext, children }) {
     const sourcePath = source ? github(source) : null
 
     const subFooter = (
-        <Grid cols={2}>
-            <div style={{ marginTop: 'var(--spacing-lg)' }}>
-                <Button to={getCurrentSource(slug, isIndex)} icon="code">
-                    建议修改
-                </Button>
-            </div>
-            {next && <ReadNext title={next.title} to={next.slug} />}
-        </Grid>
+        <div data-pagefind-ignore="">
+            <Grid cols={2}>
+                <div style={{ marginTop: 'var(--spacing-lg)' }}>
+                    <Button to={getCurrentSource(slug, isIndex)} icon="code">
+                        建议修改
+                    </Button>
+                </div>
+                {next && <ReadNext title={next.title} to={next.slug} />}
+            </Grid>
+        </div>
     )
 
     return (

@@ -92,6 +92,7 @@ const Headline = ({
     permalink = true,
     className,
     children,
+    ...props
 }) => {
     // This can be set via hidden="true" and as a prop, so we need to accept both
     if (hidden === true || hidden === 'true') return null
@@ -101,7 +102,7 @@ const Headline = ({
     })
     const tags = tag ? tag.split(',').map((t) => t.trim()) : []
     return (
-        <Component id={id} name={name} className={headingClassNames}>
+        <Component id={id} name={name} className={headingClassNames} {...props}>
             <Permalink id={permalink ? id : null}>{children} </Permalink>
             {tags.map((tag, i) => (
                 <Tag spaced key={i}>
