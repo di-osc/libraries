@@ -3,17 +3,18 @@ import { render, screen } from '@testing-library/react'
 
 import Main from './main'
 import { Pre } from './codeBlock'
+import { InlineCode } from './inlineCode'
 import Title from './title'
 import { H1 } from './typography'
 import Docs from '../templates/docs'
 import Layout from '../templates'
 
 jest.mock('./sidebar', () => function MockSidebar() {
-    return <aside>Sidebar</aside>
+    return <aside data-testid="site-sidebar">Sidebar</aside>
 })
 
 jest.mock('./footer', () => function MockFooter() {
-    return <footer>Footer</footer>
+    return <footer data-testid="site-footer">Footer</footer>
 })
 
 jest.mock('./readnext', () => function MockReadNext({ title }) {
@@ -28,23 +29,34 @@ jest.mock('./seo', () => function MockSeo() {
     return null
 })
 
+jest.mock('./navigation', () => function MockNavigation({ children }) {
+    return <nav data-testid="site-navigation">{children}</nav>
+})
+
 test('Main marks only wrapped article content as the Pagefind body', () => {
     const { container } = render(
-        <Main wrapContent footer={<footer>Repeated footer</footer>}>
-            Searchable article
+        <Main wrapContent footer={<footer data-testid="main-chrome">Repeated footer</footer>}>
+            <p>Searchable article</p>
         </Main>
     )
 
     const article = container.querySelector('article')
+    const footer = screen.getByTestId('main-chrome')
     expect(article).toHaveAttribute('data-pagefind-body', '')
-    expect(article).toHaveTextContent('Searchable article')
-    expect(screen.getByText('Repeated footer')).not.toHaveAttribute('data-pagefind-body')
+    expect(article).toContainElement(screen.getByText('Searchable article'))
+    expect(article).not.toContainElement(footer)
 })
 
-test('Pre excludes fenced code from Pagefind', () => {
-    const { container } = render(<Pre>const answer = 42</Pre>)
+test('Pagefind excludes fenced code but keeps inline code searchable', () => {
+    const { container } = render(
+        <>
+            <Pre>const answer = 42</Pre>
+            <InlineCode>answer</InlineCode>
+        </>
+    )
 
     expect(container.querySelector('pre')).toHaveAttribute('data-pagefind-ignore', '')
+    expect(container.querySelector('code')).not.toHaveAttribute('data-pagefind-ignore')
 })
 
 test('Title exposes Pagefind title metadata on its final h1', () => {
@@ -83,7 +95,7 @@ test('Docs excludes its entire subfooter while keeping document content searchab
                 slug: '/guide/current',
                 title: 'Current guide',
                 section: 'guide',
-                sidebar: [],
+                sidebar: [{ title: 'Guide' }],
                 next: { title: 'Following guide', slug: '/guide/next' },
             }}
         >
@@ -92,15 +104,27 @@ test('Docs excludes its entire subfooter while keeping document content searchab
     )
 
     const article = container.querySelector('article[data-pagefind-body=""]')
+    const sidebar = screen.getByTestId('site-sidebar')
+    const siteFooter = screen.getByTestId('site-footer')
     const ignoredSubFooter = screen.getByText('建议修改').closest('[data-pagefind-ignore]')
     expect(article).toContainElement(screen.getByText('Searchable documentation'))
+    expect(article).not.toContainElement(sidebar)
+    expect(article).not.toContainElement(siteFooter)
     expect(ignoredSubFooter).toHaveAttribute('data-pagefind-ignore', '')
+    expect(article).toContainElement(ignoredSubFooter)
+    expect(ignoredSubFooter).toContainElement(screen.getByText('建议修改'))
     expect(ignoredSubFooter).toContainElement(screen.getByText('Read next: Following guide'))
 })
 
-test('Layout renders one search trigger alongside the navigation progress indicator', () => {
+test('Layout renders one Search directly before Progress in navigation', () => {
     render(<Layout title="Home">Home content</Layout>)
 
-    expect(screen.getAllByRole('button', { name: '搜索文档' })).toHaveLength(1)
-    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    const navigation = screen.getByTestId('site-navigation')
+    const searchTriggers = screen.getAllByRole('button', { name: '搜索文档' })
+    const searchTrigger = searchTriggers[0]
+    const progress = screen.getByRole('progressbar')
+    expect(searchTriggers).toHaveLength(1)
+    expect(searchTrigger.parentElement).toBe(navigation)
+    expect(progress.parentElement).toBe(navigation)
+    expect(searchTrigger.nextElementSibling).toBe(progress)
 })
