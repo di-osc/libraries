@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import PropTypes from 'prop-types'
 import classNames from 'classnames'
@@ -6,8 +6,6 @@ import classNames from 'classnames'
 import { pagefindClient } from '../search/pagefind'
 import classes from '../styles/search.module.sass'
 
-const SEARCH_RESULTS_ID = 'document-search-results'
-const optionId = index => `document-search-option-${index}`
 const focusableSelector = [
     'input:not([disabled])',
     'button:not([disabled])',
@@ -16,6 +14,10 @@ const focusableSelector = [
 ].join(',')
 
 export default function Search({ client }) {
+    const componentId = useId()
+    const searchInputId = `${componentId}-input`
+    const searchResultsId = `${componentId}-results`
+    const optionId = index => `${searchResultsId}-option-${index}`
     const [isOpen, setIsOpen] = useState(false)
     const [query, setQuery] = useState('')
     const [results, setResults] = useState([])
@@ -185,7 +187,13 @@ export default function Search({ client }) {
     }, [results, selectedIndex])
 
     const handleRetry = () => {
-        client.retry()
+        inputRef.current?.focus()
+        try {
+            client.retry()
+        } catch {
+            setStatus('error')
+            return
+        }
         setRetryVersion(version => version + 1)
     }
 
@@ -240,6 +248,7 @@ export default function Search({ client }) {
             className={classes.backdrop}
             onPointerDown={event => {
                 if (event.target === event.currentTarget) {
+                    event.preventDefault()
                     close()
                 }
             }}
@@ -259,12 +268,12 @@ export default function Search({ client }) {
                     </svg>
                     <input
                         ref={inputRef}
-                        id="document-search-input"
+                        id={searchInputId}
                         className={classes.input}
                         type="search"
                         role="combobox"
                         aria-label="搜索关键词"
-                        aria-controls={SEARCH_RESULTS_ID}
+                        aria-controls={searchResultsId}
                         aria-expanded="true"
                         aria-activedescendant={activeOptionId}
                         aria-autocomplete="list"
@@ -284,7 +293,7 @@ export default function Search({ client }) {
                     </button>
                 </div>
 
-                <div className={classes.results} id={SEARCH_RESULTS_ID} role="listbox" aria-label="搜索结果">
+                <div className={classes.results} id={searchResultsId} role="listbox" aria-label="搜索结果">
                     {status === 'success' && results.map((result, index) => (
                         <a
                             key={result.id || result.url}

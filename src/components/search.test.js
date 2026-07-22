@@ -131,6 +131,42 @@ test('server and first client markup use Ctrl before hydrating the Mac shortcut'
     expect(screen.getByRole('dialog', { name: '搜索文档' })).toBeInTheDocument()
 })
 
+test('multiple Search instances use unique combobox, listbox, and option IDs', async () => {
+    const user = userEvent.setup()
+    renderSearch(
+        <>
+            <Search client={createClient({
+                search: jest.fn().mockResolvedValue([{ id: 'first', url: '/first', title: '第一项' }]),
+            })} />
+            <Search client={createClient({
+                search: jest.fn().mockResolvedValue([{ id: 'second', url: '/second', title: '第二项' }]),
+            })} />
+        </>
+    )
+    const triggers = screen.getAllByRole('button', { name: '搜索文档' })
+
+    await user.click(triggers[0])
+    await user.type(screen.getByRole('combobox'), '一')
+    const firstIds = {
+        combobox: screen.getByRole('combobox').id,
+        listbox: screen.getByRole('listbox').id,
+        option: (await screen.findByRole('option', { name: '第一项' })).id,
+    }
+    await user.click(screen.getByRole('button', { name: '关闭搜索' }))
+
+    await user.click(triggers[1])
+    await user.type(screen.getByRole('combobox'), '二')
+    const secondIds = {
+        combobox: screen.getByRole('combobox').id,
+        listbox: screen.getByRole('listbox').id,
+        option: (await screen.findByRole('option', { name: '第二项' })).id,
+    }
+
+    expect(firstIds.combobox).not.toBe(secondIds.combobox)
+    expect(firstIds.listbox).not.toBe(secondIds.listbox)
+    expect(firstIds.option).not.toBe(secondIds.option)
+})
+
 test('a global shortcut restores the previously focused opener when closed', async () => {
     jest.spyOn(window.navigator, 'platform', 'get').mockReturnValue('Linux x86_64')
     const opener = document.createElement('button')
@@ -247,6 +283,45 @@ test('shows an error and retry reruns the same query', async () => {
     expect(await screen.findByRole('option', { name: '恢复成功' })).toBeInTheDocument()
 })
 
+test('retry focuses the combobox before entering the loading state', async () => {
+    const pending = deferred()
+    const client = createClient({
+        search: jest.fn()
+            .mockRejectedValueOnce(new Error('missing index'))
+            .mockReturnValueOnce(pending.promise),
+    })
+    const user = userEvent.setup()
+    await openSearch(user, client)
+    await user.type(screen.getByRole('combobox'), '索')
+    const retry = await screen.findByRole('button', { name: '重新加载' })
+
+    await user.click(retry)
+
+    expect(screen.getByRole('combobox')).toHaveFocus()
+    expect(screen.getByRole('status')).toHaveTextContent('正在搜索…')
+    expect(screen.getByRole('dialog')).toContainElement(document.activeElement)
+})
+
+test('a synchronous retry exception keeps the error modal usable and focused', async () => {
+    const client = createClient({
+        search: jest.fn().mockRejectedValue(new Error('missing index')),
+        retry: jest.fn(() => { throw new Error('retry failure') }),
+    })
+    const user = userEvent.setup()
+    await openSearch(user, client)
+    await user.type(screen.getByRole('combobox'), '索')
+    const retry = await screen.findByRole('button', { name: '重新加载' })
+    const suppressExpectedError = event => event.preventDefault()
+    window.addEventListener('error', suppressExpectedError)
+
+    await user.click(retry)
+    window.removeEventListener('error', suppressExpectedError)
+
+    expect(screen.getByRole('status')).toHaveTextContent('搜索索引暂时不可用')
+    expect(screen.getByRole('combobox')).toHaveFocus()
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+})
+
 test('results start selected and Arrow keys move and wrap selection', async () => {
     const client = createClient({
         search: jest.fn().mockResolvedValue([
@@ -318,12 +393,14 @@ test('backdrop clicks close the dialog while clicks inside do not', async () => 
     const user = userEvent.setup()
     await openSearch(user)
 
+    const trigger = screen.getByRole('button', { name: '搜索文档' })
     const dialog = screen.getByRole('dialog', { name: '搜索文档' })
     await user.click(dialog)
     expect(dialog).toBeInTheDocument()
 
     await user.click(dialog.parentElement)
     expect(screen.queryByRole('dialog', { name: '搜索文档' })).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
 })
 
 test('closing after resolved results resets search state before reopening', async () => {
