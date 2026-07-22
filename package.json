@@ -8,7 +8,7 @@
     "site:export": "next build && npm run sitemap && next export",
     "search:clean": "node -e \"require('node:fs').rmSync('out/pagefind', { recursive: true, force: true })\"",
     "search:index": "npm run search:clean && pagefind --site out",
-    "preview:search": "npm run build && http-server out -e html -c-1",
+    "preview:search": "npm run build && node scripts/serve-search-preview.mjs",
     "sitemap": "next-sitemap --config next-sitemap.config.mjs",
     "start": "next start",
     "test": "jest",
@@ -67,10 +67,10 @@
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
-    "http-server": "14.1.1",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^30.4.2",
     "jest-environment-jsdom": "^30.4.1",
-    "pagefind": "^1.5.2"
+    "pagefind": "^1.5.2",
+    "serve-handler": "6.1.7"
   }
 }
