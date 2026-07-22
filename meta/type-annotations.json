@@ -16,5 +16,17 @@
     "Timeline": "/asr-data/api#timeline",
     "Token": "/asr-data/api#token",
     "Transcript": "/asr-data/api#transcript",
-    "Transcription": "/asr-data/api#transcription"
+    "Transcription": "/asr-data/api#transcription",
+    "VadOptions": "/vad-burn/api#vad-options",
+    "VadSegment": "/vad-burn/api#vad-segment",
+    "Waveform": "/vad-burn/api#waveform",
+    "FsmnVadModel": "/vad-burn/api#fsmn-vad-model",
+    "FsmnVadStream": "/vad-burn/api#fsmn-vad-stream",
+    "FsmnVadDetection": "/vad-burn/api#fsmn-vad-detection",
+    "FireRedVadModel": "/vad-burn/api#firered-vad-model",
+    "FireRedVadStream": "/vad-burn/api#firered-vad-stream",
+    "FireRedVadDetection": "/vad-burn/api#firered-vad-detection",
+    "FsmnVadTiming": "/vad-burn/api#timing",
+    "FsmnForwardTiming": "/vad-burn/api#timing",
+    "FireRedVadTiming": "/vad-burn/api#timing"
 }

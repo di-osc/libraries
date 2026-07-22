@@ -1,0 +1,101 @@
+---
+title: Python 使用
+teaser: 在 Python 中加载模型、离线检测和流式检测
+version: 0.1.3
+section: vad-burn
+menu:
+  - ['安装', 'installation']
+  - ['输入样本', 'samples']
+  - ['离线检测', 'offline']
+  - ['流式检测', 'streaming']
+  - ['计时结果', 'timing']
+---
+
+## 安装 {id="installation"}
+
+```bash
+pip install vad-burn
+```
+
+Python API 接收普通 sequence 或 NumPy 数组；进入 Rust 后会复制为 `Vec<f32>` 并在
+推理期间释放 GIL。
+
+## 输入样本 {id="samples"}
+
+所有模型都要求 16 kHz 单声道归一化浮点 PCM：
+
+```python
+import numpy as np
+
+samples = np.asarray(samples, dtype=np.float32)
+samples = np.clip(samples, -1.0, 1.0)
+```
+
+如果输入来自文件，先用音频库解码、重采样到 16 kHz、下混为 mono，再调用
+`vad-burn`。
+
+## 离线检测 {id="offline"}
+
+FSMN VAD：
+
+```python
+from vad_burn import FsmnVadModel, VadOptions
+
+vad = FsmnVadModel.from_modelscope()
+segments = vad.detect(samples, 16000, VadOptions())
+
+for segment in segments:
+    print(segment.start_ms, segment.end_ms, segment.probability)
+```
+
+FireRedVAD 使用相同接口：
+
+```python
+from vad_burn import FireRedVadModel
+
+vad = FireRedVadModel.from_modelscope()
+segments = vad.detect(samples, 16000)
+```
+
+也可以加载本地模型目录：
+
+```python
+fsmn = FsmnVadModel.from_pretrained("/path/to/fsmn-vad")
+firered = FireRedVadModel.from_pretrained("/path/to/firered-vad")
+```
+
+## 流式检测 {id="streaming"}
+
+```python
+from vad_burn import FsmnVadModel, VadOptions
+
+vad = FsmnVadModel.from_modelscope()
+stream = vad.new_stream(VadOptions())
+segments = []
+
+for chunk in chunks:
+    segments.extend(stream.push(chunk, 16000))
+
+segments.extend(stream.finish())
+```
+
+每个 stream 只能顺序驱动一条音频流。并行处理多路音频时，为每一路调用一次
+`new_stream()`。
+
+## 计时结果 {id="timing"}
+
+`detect_with_timing()` 返回 detection 对象，其中包含 segments、frame scores 和计时
+信息：
+
+```python
+detection = vad.detect_with_timing(samples, 16000)
+
+print(len(detection.segments))
+print(detection.timing.frontend_seconds)
+print(detection.timing.forward_seconds)
+print(detection.timing.segmenter_seconds)
+```
+
+FSMN 的 `frame_scores` 是每帧 posterior 列表；FireRedVAD 的 `frame_scores` 是每帧
+语音概率列表。计时结果适合做本地性能回归，不建议作为跨机器固定 SLA。
+

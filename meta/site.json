@@ -8,23 +8,27 @@
     "repo": "di-osc/libraries",
     "theme": "#09a3d5",
     "sections": [
-        { "id": "asr-data", "title": "asr-data Documentation", "theme": "blue" }
+        { "id": "asr-data", "title": "asr-data Documentation", "theme": "blue" },
+        { "id": "vad-burn", "title": "vad-burn Documentation", "theme": "blue" }
     ],
     "navigation": [
-        { "text": "asr-data", "url": "/asr-data" }
+        { "text": "asr-data", "url": "/asr-data" },
+        { "text": "vad-burn", "url": "/vad-burn" }
     ],
     "footer": [
         {
             "label": "Libraries",
             "items": [
-                { "text": "asr-data", "url": "/asr-data" }
+                { "text": "asr-data", "url": "/asr-data" },
+                { "text": "vad-burn", "url": "/vad-burn" }
             ]
         },
         {
             "label": "Source",
             "items": [
                 { "text": "Documentation", "url": "https://github.com/di-osc/libraries" },
-                { "text": "asr-data", "url": "https://github.com/di-osc/asr-data" }
+                { "text": "asr-data", "url": "https://github.com/di-osc/asr-data" },
+                { "text": "vad-burn", "url": "https://github.com/di-osc/vad-burn" }
             ]
         }
     ]

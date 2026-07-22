@@ -1,0 +1,112 @@
+---
+title: vad-burn
+teaser: 基于 Burn 的高性能语音活动检测
+version: 0.1.3
+section: vad-burn
+menu:
+  - ['安装', 'installation']
+  - ['核心概念', 'concepts']
+  - ['快速开始', 'quickstart']
+  - ['后端选择', 'backends']
+---
+
+`vad-burn` 是一个 Rust 和 Python 可用的 VAD 推理库，面向 16 kHz 单声道
+归一化浮点 PCM。它默认使用 Burn Flex CPU 后端，FSMN VAD 还可以通过 Burn
+Metal 后端在 Apple GPU 上运行。库内包含 FSMN VAD 和 FireRedVAD 两条模型路径，
+都支持离线整段检测和流式检测。
+
+源码：[di-osc/vad-burn](https://github.com/di-osc/vad-burn)
+
+## 安装 {id="installation"}
+
+Python 用户直接安装 wheel：
+
+```bash
+pip install vad-burn
+```
+
+Rust 项目添加 crate：
+
+```bash
+cargo add vad-burn
+```
+
+如果需要 FSMN Metal 后端，在 Rust 项目中启用 `metal` feature：
+
+```toml
+[dependencies]
+vad-burn = { version = "0.1.3", features = ["metal"] }
+```
+
+## 核心概念 {id="concepts"}
+
+- **Waveform**：Rust API 使用 [`Waveform`](/vad-burn/api#waveform) 表示输入音频。
+  Python API 直接接收 `Sequence[float]` 和 `sample_rate`。样本约定均为
+  `[-1.0, 1.0]` 范围内的单声道浮点 PCM。
+- **VadOptions**：[`VadOptions`](/vad-burn/api#vad-options) 控制阈值、最短语音、
+  静音闭合时长、最长分段和 padding。FSMN 和 FireRed 共用同一组选项。
+- **离线检测**：`detect()` 一次处理完整音频并返回
+  [`VadSegment`](/vad-burn/api#vad-segment) 列表。
+- **带计时检测**：`detect_with_timing()` 返回 segments、帧级分数和前端/前向/
+  后处理计时，适合验证性能。
+- **流式检测**：`new_stream()` 创建有状态 stream；反复 `push()` 输入 chunk，
+  最后调用 `finish()` 刷出剩余片段。
+- **模型来源**：`from_modelscope()` 下载并复用 ModelScope 缓存；
+  `from_pretrained()` 加载本地模型目录。
+
+## 快速开始 {id="quickstart"}
+
+Rust：
+
+```rust
+use vad_burn::{FsmnVadModel, VadOptions, Waveform};
+
+fn main() -> anyhow::Result<()> {
+    let model = FsmnVadModel::from_modelscope()?;
+    let waveform = Waveform::new(samples, 16_000);
+    let segments = model.detect(&waveform, &VadOptions::default())?;
+
+    for segment in segments {
+        println!(
+            "{}..{} ms {:.3}",
+            segment.range.start.0,
+            segment.range.end.0,
+            segment.probability
+        );
+    }
+    Ok(())
+}
+```
+
+Python：
+
+```python
+from vad_burn import FsmnVadModel, VadOptions
+
+vad = FsmnVadModel.from_modelscope()
+segments = vad.detect(samples, 16000, VadOptions())
+
+for segment in segments:
+    print(segment.start_ms, segment.end_ms, segment.probability)
+```
+
+## 后端选择 {id="backends"}
+
+默认的 `FsmnVadModel` 和 `FireRedVadModel` 使用 Burn Flex CPU 后端。FSMN VAD 的
+Rust API 额外支持泛型后端；使用 Metal 时需要启用 `metal` feature，并显式传入
+`WgpuDevice`：
+
+```rust
+use burn::backend::{Metal, wgpu::WgpuDevice};
+use vad_burn::FsmnVadModel;
+
+let model = FsmnVadModel::<Metal>::from_pretrained_on_device(
+    "/path/to/fsmn-vad",
+    WgpuDevice::default(),
+)?;
+```
+
+Metal 路径由 Burn WGPU/CubeCL 栈实现：`vad-burn` 的 `metal` feature 启用
+`burn/metal`，底层通过 `burn-wgpu/metal` 和 `cubecl/wgpu-msl` 生成 Metal
+Shading Language kernel。
+

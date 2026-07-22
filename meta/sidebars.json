@@ -19,5 +19,25 @@
                 ]
             }
         ]
+    },
+    {
+        "section": "vad-burn",
+        "items": [
+            {
+                "label": "开始使用",
+                "items": [
+                    { "text": "概览", "url": "/vad-burn" },
+                    { "text": "Rust 使用", "url": "/vad-burn/rust" },
+                    { "text": "Python 使用", "url": "/vad-burn/python" },
+                    { "text": "Benchmark", "url": "/vad-burn/benchmark" }
+                ]
+            },
+            {
+                "label": "参考",
+                "items": [
+                    { "text": "API 参考", "url": "/vad-burn/api" }
+                ]
+            }
+        ]
     }
 ]

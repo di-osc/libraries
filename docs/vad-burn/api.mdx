@@ -1,0 +1,172 @@
+---
+title: API 参考
+teaser: Rust 与 Python 公开类型和方法
+version: 0.1.3
+section: vad-burn
+menu:
+  - ['VadOptions', 'vad-options']
+  - ['VadSegment', 'vad-segment']
+  - ['Waveform', 'waveform']
+  - ['FsmnVadModel', 'fsmn-vad-model']
+  - ['FsmnVadStream', 'fsmn-vad-stream']
+  - ['FsmnVadDetection', 'fsmn-vad-detection']
+  - ['FireRedVadModel', 'firered-vad-model']
+  - ['FireRedVadStream', 'firered-vad-stream']
+  - ['FireRedVadDetection', 'firered-vad-detection']
+  - ['Timing', 'timing']
+---
+
+## VadOptions {id="vad-options",tag="struct"}
+
+控制 VAD 分段行为。Rust 和 Python 字段一致。
+
+| Field            | Default  | Description                                      |
+| ---------------- | -------: | ------------------------------------------------ |
+| `threshold`      | `0.6`    | 判定语音的阈值。                                 |
+| `min_speech_ms`  | `250`    | 丢弃短于该时长的语音片段。                       |
+| `min_silence_ms` | `500`    | 闭合语音片段所需的静音时长。                     |
+| `max_segment_ms` | `30000`  | 最长语音片段；Rust 中 `0` 表示禁用二次拆分。     |
+| `pad_ms`         | `0`      | 保留字段，用于 API 兼容。                        |
+
+> #### Python
+>
+> ```python
+> from vad_burn import VadOptions
+>
+> options = VadOptions(
+>     threshold=0.6,
+>     min_speech_ms=250,
+>     min_silence_ms=500,
+>     max_segment_ms=30_000,
+> )
+> ```
+
+## VadSegment {id="vad-segment",tag="struct"}
+
+检测到的语音片段。
+
+| Rust field     | Python property | Description              |
+| -------------- | --------------- | ------------------------ |
+| `range.start`  | `start_ms`      | 起始时间，毫秒。         |
+| `range.end`    | `end_ms`        | 结束时间，毫秒。         |
+| `probability`  | `probability`   | 后处理给出的片段分数。   |
+
+## Waveform {id="waveform",tag="struct"}
+
+Rust API 的音频输入类型。
+
+| Field         | Description                                  |
+| ------------- | -------------------------------------------- |
+| `samples`     | 归一化 `f32` PCM 样本。~~Vec&lt;f32&gt;~~    |
+| `sample_rate` | 采样率，VAD 推理要求 `16000`。~~u32~~        |
+| `channels`    | 声道数，VAD 推理要求 `1`。~~u16~~            |
+
+常用方法：
+
+| Method                              | Description                    |
+| ----------------------------------- | ------------------------------ |
+| `Waveform::new(samples, sample_rate)` | 构造单声道波形。             |
+| `new_with_channels(...)`            | 构造指定声道数的波形。         |
+| `duration_seconds()`                | 返回秒数。                     |
+| `duration_ms()`                     | 返回毫秒数。                   |
+| `slice_ms(start_ms, end_ms)`        | 按毫秒截取。                   |
+
+## FsmnVadModel {id="fsmn-vad-model",tag="class"}
+
+FSMN VAD 模型。默认类型为 Burn Flex CPU 后端；Rust 可通过泛型使用 Metal 后端。
+
+| Method                                      | Description                              |
+| ------------------------------------------- | ---------------------------------------- |
+| `from_pretrained(model_dir)`                | 加载本地模型目录，需包含 `model.pt` 和 `am.mvn`。 |
+| `from_modelscope()`                         | 下载并加载默认 ModelScope 模型。         |
+| `from_modelscope_revision(repo_id, revision)` | 加载指定 ModelScope 仓库和 revision。 |
+| `from_pretrained_on_device(model_dir, device)` | Rust 泛型后端入口，适合 Metal。       |
+| `model_dir()`                               | 返回已加载模型目录。                     |
+| `detect(waveform, options)`                 | 离线检测。                               |
+| `detect_with_timing(waveform, options)`     | 离线检测并返回计时和帧级分数。           |
+| `new_stream(options)`                       | 创建流式检测状态。                       |
+
+Python 类名同为 `FsmnVadModel`，方法参数改为 `samples, sample_rate, options=None`。
+
+## FsmnVadStream {id="fsmn-vad-stream",tag="class"}
+
+FSMN 流式检测状态。
+
+| Method                         | Description                              |
+| ------------------------------ | ---------------------------------------- |
+| `push(samples, sample_rate)`    | 推入一块音频，返回已经稳定的 segments。 |
+| `finish()`                     | 刷出剩余片段并重置状态。                 |
+| `reset()`                      | 清空内部缓存和后处理状态。               |
+| `frame_scores()`               | Rust API 可读取累计帧级分数。            |
+| `options()`                    | Rust API 可读取当前流式选项。            |
+
+## FsmnVadDetection {id="fsmn-vad-detection",tag="struct"}
+
+`detect_with_timing()` 的返回值。
+
+| Field          | Description                                      |
+| -------------- | ------------------------------------------------ |
+| `segments`     | [`VadSegment`](#vad-segment) 列表。              |
+| `frame_scores` | FSMN 每帧 posterior 分数。                       |
+| `timing`       | [`FsmnVadTiming`](#timing) 计时结果。            |
+
+## FireRedVadModel {id="firered-vad-model",tag="class"}
+
+FireRedVAD 模型，使用 Burn Flex CPU 后端。`from_modelscope()` 会加载官方离线 VAD
+和 Stream-VAD 权重。
+
+| Method                                      | Description                              |
+| ------------------------------------------- | ---------------------------------------- |
+| `from_pretrained(model_dir)`                | 加载本地 FireRedVAD 模型目录。           |
+| `from_modelscope()`                         | 下载并加载默认 FireRedVAD 模型。         |
+| `from_modelscope_revision(repo_id, revision)` | 加载指定 ModelScope 仓库和 revision。 |
+| `model_dir()`                               | 返回模型根目录。                         |
+| `offline_model_dir()`                       | 返回离线 VAD 权重目录。                  |
+| `stream_model_dir()`                        | 返回 Stream-VAD 权重目录。               |
+| `detect(waveform, options)`                 | 离线检测。                               |
+| `detect_with_timing(waveform, options)`     | 离线检测并返回计时和帧级概率。           |
+| `new_stream(options)`                       | 创建流式检测状态。                       |
+
+Python 类名同为 `FireRedVadModel`，方法参数与 `FsmnVadModel` 保持一致。
+
+## FireRedVadStream {id="firered-vad-stream",tag="class"}
+
+FireRedVAD 流式检测状态。
+
+| Method                         | Description                              |
+| ------------------------------ | ---------------------------------------- |
+| `push(samples, sample_rate)`    | 推入一块音频，返回已经稳定的 segments。 |
+| `finish()`                     | 刷出剩余片段并重置状态。                 |
+| `reset()`                      | 清空内部缓存和后处理状态。               |
+| `frame_scores()`               | Rust API 可读取累计语音概率。            |
+| `options()`                    | Rust API 可读取当前流式选项。            |
+
+## FireRedVadDetection {id="firered-vad-detection",tag="struct"}
+
+FireRedVAD `detect_with_timing()` 的返回值。
+
+| Field          | Description                                      |
+| -------------- | ------------------------------------------------ |
+| `segments`     | [`VadSegment`](#vad-segment) 列表。              |
+| `frame_scores` | FireRedVAD 每帧语音概率。                        |
+| `timing`       | [`FireRedVadTiming`](#timing) 计时结果。         |
+
+## Timing {id="timing",tag="structs"}
+
+FSMN 计时：
+
+| Field                | Description                              |
+| -------------------- | ---------------------------------------- |
+| `frontend_seconds`   | 特征提取耗时。                           |
+| `forward_seconds`    | Burn 前向计算耗时。                      |
+| `segmenter_seconds`  | FSMN 后处理耗时。                        |
+| `forward_ops`        | Rust API 中的前向子算子计时。            |
+
+FireRedVAD 计时：
+
+| Field                 | Description                |
+| --------------------- | -------------------------- |
+| `frontend_seconds`    | 特征提取耗时。             |
+| `forward_seconds`     | Burn 前向计算耗时。        |
+| `postprocess_seconds` | 后处理耗时。               |
+| `frames`              | 处理的声学帧数。           |
