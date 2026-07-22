@@ -5,18 +5,14 @@ import classNames from 'classnames'
 import { pagefindClient } from '../search/pagefind'
 import classes from '../styles/search.module.sass'
 
-const getShortcut = () => {
-    const platform = typeof navigator === 'undefined' ? '' : navigator.platform
-    return /Mac|iPhone|iPad|iPod/.test(platform) ? '⌘ K' : 'Ctrl K'
-}
-
 export default function Search({ client }) {
     const [isOpen, setIsOpen] = useState(false)
     const [query, setQuery] = useState('')
     const [results, setResults] = useState([])
     const [status, setStatus] = useState('idle')
-    const [selectedIndex, setSelectedIndex] = useState(-1)
+    const [selectedIndex, setSelectedIndex] = useState(0)
     const [retryVersion, setRetryVersion] = useState(0)
+    const [shortcut, setShortcut] = useState('Ctrl K')
     const requestId = useRef(0)
     const triggerRef = useRef(null)
     const inputRef = useRef(null)
@@ -35,6 +31,12 @@ export default function Search({ client }) {
         return () => {
             mountedRef.current = false
             requestId.current += 1
+        }
+    }, [])
+
+    useEffect(() => {
+        if (/Mac|iPhone|iPad|iPod/.test(navigator.platform)) {
+            setShortcut('⌘ K')
         }
     }, [])
 
@@ -75,14 +77,14 @@ export default function Search({ client }) {
         if (!normalizedQuery) {
             setStatus('idle')
             setResults([])
-            setSelectedIndex(-1)
+            setSelectedIndex(0)
             return undefined
         }
 
         let cancelled = false
         setStatus('loading')
         setResults([])
-        setSelectedIndex(-1)
+        setSelectedIndex(0)
 
         Promise.resolve(client.search(normalizedQuery)).then(nextResults => {
             if (cancelled || !mountedRef.current || requestId.current !== currentRequest) {
@@ -91,7 +93,7 @@ export default function Search({ client }) {
 
             const normalizedResults = Array.isArray(nextResults) ? nextResults : []
             setResults(normalizedResults)
-            setSelectedIndex(-1)
+            setSelectedIndex(0)
             setStatus('success')
         }).catch(() => {
             if (cancelled || !mountedRef.current || requestId.current !== currentRequest) {
@@ -99,7 +101,7 @@ export default function Search({ client }) {
             }
 
             setResults([])
-            setSelectedIndex(-1)
+            setSelectedIndex(0)
             setStatus('error')
         })
 
@@ -111,10 +113,10 @@ export default function Search({ client }) {
     useEffect(() => {
         resultRefs.current = resultRefs.current.slice(0, results.length)
         setSelectedIndex(index => {
-            if (!results.length || index < 0) {
-                return -1
+            if (!results.length) {
+                return 0
             }
-            return Math.min(index, results.length - 1)
+            return Math.min(Math.max(index, 0), results.length - 1)
         })
     }, [results])
 
@@ -154,7 +156,7 @@ export default function Search({ client }) {
                     <path d="m16 16 5 5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
                 <span className={classes['trigger-label']}>搜索文档</span>
-                <span className={classes.shortcut} aria-hidden="true">{getShortcut()}</span>
+                <span className={classes.shortcut} aria-hidden="true">{shortcut}</span>
             </button>
 
             {isOpen && (
@@ -190,7 +192,7 @@ export default function Search({ client }) {
                             />
                         </div>
 
-                        <div className={classes.results} role={results.length ? 'listbox' : undefined} aria-label={results.length ? '搜索结果' : undefined}>
+                        <div className={classes.results} role="listbox" aria-label="搜索结果">
                             {status === 'idle' && <p className={classes.state}>输入关键词搜索文档</p>}
                             {status === 'loading' && <p className={classes.state}>正在搜索…</p>}
                             {status === 'success' && !results.length && <p className={classes.state}>未找到相关文档</p>}

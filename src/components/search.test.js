@@ -1,8 +1,12 @@
 import React from 'react'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { TextEncoder } from 'util'
 
 import Search from './search'
+
+global.TextEncoder = TextEncoder
+const { renderToString } = require('react-dom/server')
 
 const createClient = overrides => ({
     search: jest.fn().mockResolvedValue([]),
@@ -36,6 +40,7 @@ test('opens with the idle prompt, focuses the input, and Escape restores trigger
     const input = screen.getByRole('searchbox')
 
     expect(dialog).toHaveAttribute('aria-modal', 'true')
+    expect(screen.getByRole('listbox', { name: '搜索结果' })).toBeInTheDocument()
     expect(screen.getByText('输入关键词搜索文档')).toBeInTheDocument()
     expect(input).toHaveFocus()
     expect(client.search).not.toHaveBeenCalled()
@@ -59,12 +64,23 @@ test('Ctrl+K opens the dialog and renders the non-Mac shortcut', async () => {
     platform.mockRestore()
 })
 
-test('renders the Mac shortcut when the platform is macOS', () => {
+test('server and first client markup use Ctrl before hydrating the Mac shortcut', async () => {
     const platform = jest.spyOn(window.navigator, 'platform', 'get').mockReturnValue('MacIntel')
+    const client = createClient()
+    const markup = renderToString(<Search client={client} />)
 
-    render(<Search client={createClient()} />)
+    expect(markup).toContain('Ctrl K')
 
-    expect(screen.getByText('⌘ K')).toBeInTheDocument()
+    const container = document.createElement('div')
+    container.innerHTML = markup
+    document.body.appendChild(container)
+    const error = jest.spyOn(console, 'error').mockImplementation(() => {})
+
+    render(<Search client={client} />, { container, hydrate: true })
+
+    expect(await screen.findByText('⌘ K')).toBeInTheDocument()
+    expect(error).not.toHaveBeenCalled()
+    error.mockRestore()
     platform.mockRestore()
 })
 
@@ -118,6 +134,7 @@ test('shows an error and retry reruns the same query', async () => {
     await user.type(screen.getByRole('searchbox'), '索')
 
     expect(await screen.findByText('搜索索引暂时不可用。开发环境请运行 npm run preview:search。')).toBeInTheDocument()
+    expect(screen.getByRole('listbox', { name: '搜索结果' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '重新加载' }))
 
     expect(client.retry).toHaveBeenCalledTimes(1)
@@ -125,7 +142,33 @@ test('shows an error and retry reruns the same query', async () => {
     expect(await screen.findByRole('option', { name: '恢复成功' })).toBeInTheDocument()
 })
 
-test('Arrow keys wrap selection and Enter activates the selected result', async () => {
+test('results start selected and Arrow keys move and wrap selection', async () => {
+    const client = createClient({
+        search: jest.fn().mockResolvedValue([
+            { id: 'one', url: '/one', title: '第一个结果' },
+            { id: 'two', url: '/two', title: '第二个结果' },
+        ]),
+    })
+    const user = userEvent.setup()
+    await openSearch(user, client)
+    const input = screen.getByRole('searchbox')
+
+    await user.type(input, '结果')
+    const options = await screen.findAllByRole('option')
+
+    expect(options[0]).toHaveAttribute('aria-selected', 'true')
+
+    await user.keyboard('{ArrowDown}')
+    expect(options[1]).toHaveAttribute('aria-selected', 'true')
+
+    await user.keyboard('{ArrowDown}')
+    expect(options[0]).toHaveAttribute('aria-selected', 'true')
+
+    await user.keyboard('{ArrowUp}')
+    expect(options[1]).toHaveAttribute('aria-selected', 'true')
+})
+
+test('Enter immediately activates the initially selected first result', async () => {
     const client = createClient({
         search: jest.fn().mockResolvedValue([
             { id: 'one', url: '/one', title: '第一个结果' },
@@ -135,18 +178,11 @@ test('Arrow keys wrap selection and Enter activates the selected result', async 
     const click = jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
     const user = userEvent.setup()
     await openSearch(user, client)
-    const input = screen.getByRole('searchbox')
 
-    await user.type(input, '结果')
+    await user.type(screen.getByRole('searchbox'), '结果')
     const options = await screen.findAllByRole('option')
-
-    await user.keyboard('{ArrowUp}')
-    expect(options[1]).toHaveAttribute('aria-selected', 'true')
-
-    await user.keyboard('{ArrowDown}')
-    expect(options[0]).toHaveAttribute('aria-selected', 'true')
-
     await user.keyboard('{Enter}')
+
     expect(click).toHaveBeenCalledTimes(1)
     expect(click.mock.instances[0]).toBe(options[0])
     click.mockRestore()
