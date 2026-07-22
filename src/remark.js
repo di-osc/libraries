@@ -2,6 +2,7 @@ import Link from './components/link'
 import Section, { Hr } from './components/section'
 import { Table, Tr, Th, Tx, Td } from './components/table'
 import Code from './components/codeDynamic'
+import { TypeAnnotation } from './components/typeAnnotation'
 import { InlineCode } from './components/inlineCode'
 import CodeBlock, { Pre } from './components/codeBlock'
 import { Ol, Ul, Li } from './components/list'
@@ -12,13 +13,22 @@ import Aside from './components/aside'
 import Button from './components/button'
 import Tag from './components/tag'
 import Grid from './components/grid'
-import { YouTube, SoundCloud, Iframe, Image, ImageScrollable, GoogleSheet, Standalone } from './components/embed'
+import {
+    YouTube,
+    SoundCloud,
+    Iframe,
+    Image,
+    ImageScrollable,
+    GoogleSheet,
+    Standalone,
+} from './components/embed'
 
 export const remarkComponents = {
     a: Link,
     p: P,
     pre: Pre,
     code: Code,
+    del: TypeAnnotation,
     table: Table,
     img: Image,
     tr: Tr,

@@ -1,0 +1,20 @@
+{
+    "Annotation": "/asr-data/api#annotation",
+    "AnnotationKind": "/asr-data/api#annotation-kind",
+    "AnnotationPayload": "/asr-data/api#annotation-payload-alias",
+    "AnnotationStatus": "/asr-data/api#annotation-status",
+    "AsrDataError": "/asr-data/api#asr-data-error",
+    "Audio": "/asr-data/api#audio",
+    "AudioChunk": "/asr-data/api#audio-chunk",
+    "AudioDB": "/asr-data/api#audio-db",
+    "AudioDoc": "/asr-data/api#audio-doc",
+    "AudioFormat": "/asr-data/api#audio-properties",
+    "AudioSource": "/asr-data/api#audio-source",
+    "PredictionAnnotations": "/asr-data/api#prediction-annotations",
+    "ReferenceAnnotations": "/asr-data/api#reference-annotations",
+    "Speaker": "/asr-data/api#speaker",
+    "Timeline": "/asr-data/api#timeline",
+    "Token": "/asr-data/api#token",
+    "Transcript": "/asr-data/api#transcript",
+    "Transcription": "/asr-data/api#transcription"
+}

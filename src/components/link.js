@@ -4,6 +4,7 @@ import NextLink from 'next/link'
 import classNames from 'classnames'
 
 import Icon from './icon'
+import { InlineCode } from './inlineCode'
 import classes from '../styles/link.module.sass'
 import { isString, isImage } from './util'
 
@@ -35,8 +36,10 @@ export default function Link({
     const icon = getIcon(dest)
     const withIcon = !noLinkLayout && !hideIcon && !!icon && !isImage(children)
     const sourceWithText = withIcon && isString(children)
+    const isInlineCode = React.isValidElement(children) && children.type === InlineCode
     const linkClassNames = classNames(classes.root, className, {
         [classes['no-link-layout']]: noLinkLayout,
+        [classes['inline-code']]: isInlineCode,
         [classes.nowrap]: (withIcon && !sourceWithText) || icon === 'network',
         [classes['with-icon']]: withIcon,
     })

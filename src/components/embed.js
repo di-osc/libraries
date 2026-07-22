@@ -80,7 +80,7 @@ Iframe.propTypes = {
     height: PropTypes.number,
 }
 
-const Image = ({ src, alt, title, href, ...props }) => {
+const Image = ({ src, alt, title, href, width = 650, ...props }) => {
     // This is only needed for image types that are NOT handled by
     // gatsby-remark-images, i.e. mostly SVGs. The plugin adds formatting
     // and support for captions, so this normalises that behaviour.
@@ -91,11 +91,17 @@ const Image = ({ src, alt, title, href, ...props }) => {
             {href ? (
                 <Link className={linkClassNames} href={href} noLinkLayout forceExternal>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img className={classes.image} src={src} alt={alt} width={650} height="auto" />
+                    <img
+                        className={classes.image}
+                        src={src}
+                        alt={alt}
+                        width={width}
+                        height="auto"
+                    />
                 </Link>
             ) : (
                 /* eslint-disable-next-line @next/next/no-img-element */
-                <img className={classes.image} src={src} alt={alt} width={650} height="auto" />
+                <img className={classes.image} src={src} alt={alt} width={width} height="auto" />
             )}
 
             {title && (
@@ -110,7 +116,13 @@ const Image = ({ src, alt, title, href, ...props }) => {
 const ImageScrollable = ({ src, alt, width, ...props }) => {
     return (
         <figure className={classNames(classes.standalone, classes.scrollable)}>
-            <img className={classes['image-scrollable']} src={src} alt={alt} width={width} height="auto" />
+            <img
+                className={classes['image-scrollable']}
+                src={src}
+                alt={alt}
+                width={width}
+                height="auto"
+            />
         </figure>
     )
 }

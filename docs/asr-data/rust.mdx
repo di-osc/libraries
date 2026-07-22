@@ -1,72 +1,788 @@
 ---
 title: Rust API
-teaser: 在 Rust 项目中使用 asr-data 的数据模型和 SQLite 存储
+version: 0.1.1
 section: asr-data
 menu:
-  - ['安装', 'installation']
-  - ['音频记录', 'audio']
-  - ['数据库', 'database']
-  - ['公开类型', 'exports']
+  - ['AudioSource', 'audio-source']
+  - ['Audio', 'audio']
+  - ['AudioChunk', 'audio-chunk']
+  - ['音频格式类型', 'audio-types']
+  - ['AudioDoc', 'audio-doc']
+  - ['Timeline', 'timeline']
+  - ['Annotation', 'annotation']
+  - ['Transcription', 'transcription']
+  - ['SpeakerPayload', 'speaker-payload']
+  - ['Token', 'token']
+  - ['AudioDb', 'audio-db']
+  - ['AudioQuery', 'audio-query']
+  - ['时间类型', 'time-types']
+  - ['CER', 'cer']
+  - ['错误类型', 'errors']
 ---
 
-## 安装 {id="installation"}
+## AudioSource {id="audio-source",tag="enum"}
 
-```bash
-cargo add asr-data
-```
+描述尚未解码的音频来源。它是一个 enum，因此来源类型在编译期明确，不依赖字符串
+kind。来源通过 `load()` 解码为完整 [`Audio`](#audio)。
 
-crate 使用 Rust 2024 edition，默认构建纯 Rust 核心。`python-bindings` feature
-用于构建 Python 扩展，普通 Rust 项目无需启用。
+| Variant                                     | Description           |
+| ------------------------------------------- | --------------------- |
+| `Path(PathBuf)`                             | 本地音频文件。        |
+| `Url(String)`                               | HTTP 或 HTTPS 地址。  |
+| `EncodedBytes(Vec<u8>)`                     | WAV、MP3 等编码字节。 |
+| `Base64(String)`                            | base64 编码的音频。   |
+| `PcmS16Le { bytes, sample_rate, channels }` | PCM S16LE 音频。      |
 
-## 音频记录 {id="audio"}
+## AudioSource::from_url {id="audio-source-from-url",tag="associated function"}
 
-```rust
-use asr_data::{Audio, AudioChannel, AudioSource};
+从 URL 创建音频来源。构造过程不发起请求，调用 `load()` 时才下载并解码。
 
-let mut audio = Audio::with_id(
-    "call-001",
-    AudioSource::from_path("audio.wav"),
-);
+> #### Example
+>
+> ```rust
+> use asr_data::AudioSource;
+>
+> const URL: &str =
+>     "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav";
+>
+> fn main() -> Result<(), Box<dyn std::error::Error>> {
+>     let source = AudioSource::from_url(URL);
+>     let audio = source.load()?;
+>     println!("{:.0} ms", audio.duration_ms());
+>     Ok(())
+> }
+> ```
 
-audio.metadata.insert(
-    "split".to_string(),
-    serde_json::json!("train"),
-);
+| Name        | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| `url`       | 可转换为 `String` 的 URL。~~impl Into&lt;String&gt;~~ |
+| **RETURNS** | 尚未加载的来源。~~AudioSource~~                       |
 
-let mono = audio
-    .timeline(AudioChannel::Mono)?
-    .expect("mono timeline always exists");
-```
+## AudioSource constructors {id="audio-source-constructors",tag="associated functions"}
 
-音频也可以从 URL、编码字节、base64 或 PCM S16LE 创建。`Audio::load()`
-返回解码后的 `Waveform`，`Audio::aload()` 提供异步加载。
+其他构造方法直接对应 enum 的其余来源形式。
 
-## 数据库 {id="database"}
+| Method                                         | Description                |
+| ---------------------------------------------- | -------------------------- |
+| `from_path(path)`                              | 从本地路径创建来源。       |
+| `from_encoded_bytes(bytes)`                    | 从编码字节创建来源。       |
+| `from_base64(data)`                            | 从 base64 字符串创建来源。 |
+| `from_pcm_s16le(bytes, sample_rate, channels)` | 从 PCM S16LE 创建来源。    |
+| `new(path_or_url)`                             | 根据是否包含 `://` 推断。  |
 
-```rust
-use asr_data::{AudioDb, AudioDbMode, AudioQuery};
+优先使用显式的 `from_*()`，避免让调用者猜测 `new()` 的路径/URL 判定规则。
 
-let db = AudioDb::open("dataset.sqlite", AudioDbMode::ReadWrite)?;
-db.insert(&audio)?;
+## AudioSource::load {id="audio-source-load",tag="method"}
 
-let loaded = db.get("call-001")?;
-let page = db.query(&AudioQuery::default())?;
-```
+同步加载并解码完整音频。
 
-`AudioQuery` 支持 `limit`、`after`、最短/最长时长和 JSON 元数据过滤。
-单次查询最多返回 `MAX_QUERY_LIMIT` 条记录。
+> #### Example
+>
+> ```rust
+> use asr_data::AudioSource;
+>
+> const URL: &str =
+>     "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav";
+>
+> fn main() -> Result<(), Box<dyn std::error::Error>> {
+>     let source = AudioSource::from_url(URL);
+>     let audio = source.load_with(Some(16_000), Some(true))?;
+>     println!("{} Hz, {} channel", audio.sample_rate, audio.channels);
+>     Ok(())
+> }
+> ```
 
-## 公开类型 {id="exports"}
+| Name        | Description                                       |
+| ----------- | ------------------------------------------------- |
+| `&self`     | 借用来源，不消耗 `AudioSource`。                  |
+| **RETURNS** | 解码后的完整音频。~~anyhow::Result&lt;Audio&gt;~~ |
 
-主要公开接口包括：
+`load_with(sample_rate, mono)` 可在解码后重采样并混为单声道。异步环境使用
+`source.aload().await` 或 `source.aload_with(...).await`。
 
-- 数据模型：`Audio`、`Timeline`、`Annotation`、`Transcript`、`TextSpan`、`Token`
-- 音频：`AudioSource`、`AudioFormat`、`AudioEncoding`、`AudioChannel`、`Waveform`
-- 时间：`DurationMs`、`SampleIndex`、`TimeRange`
-- 数据库：`AudioDb`、`AudioDbMode`、`AudioDbInfo`、`AudioQuery`
-- 流式处理：`AudioBytesStream`、`AudioChunk`、`AudioChunkList`
-- 评测：`compute_cer`、`normalize_for_cer`、`CerStats`
-- 音频提取：`extract_embedded_audio`、`extract_embedded_audio_from_db`
+## Audio {id="audio",tag="struct"}
+
+内存中的解码音频。公开字段保留样本、采样率、声道数和可选原始格式。
+
+| Field           | Description                                     |
+| --------------- | ----------------------------------------------- |
+| `samples`       | 按帧交错的归一化 `f32` 样本。~~Vec&lt;f32&gt;~~ |
+| `sample_rate`   | 每秒采样数。~~u32~~                             |
+| `channels`      | 声道数。~~u16~~                                 |
+| `source_format` | 原始编码信息。~~Option&lt;AudioFormat&gt;~~     |
+
+## Audio::from_url {id="audio-from-url",tag="associated function"}
+
+从 URL 直接下载并解码 `Audio`。
+
+> #### Example
+>
+> ```rust
+> use asr_data::Audio;
+>
+> const URL: &str =
+>     "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav";
+>
+> fn main() -> Result<(), Box<dyn std::error::Error>> {
+>     let audio = Audio::from_url(URL)?;
+>     println!("{} frames", audio.frame_count());
+>     println!("{:.3} seconds", audio.duration_seconds());
+>     Ok(())
+> }
+> ```
+
+| Name        | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| `url`       | 可转换为 `String` 的 URL。~~impl Into&lt;String&gt;~~ |
+| **RETURNS** | 解码后的音频。~~anyhow::Result&lt;Audio&gt;~~         |
+
+## Audio constructors {id="audio-constructors",tag="associated functions"}
+
+| Method                                                  | Description                 |
+| ------------------------------------------------------- | --------------------------- |
+| `new(samples, sample_rate)`                             | 构造单声道音频。            |
+| `try_new_with_channels(samples, sample_rate, channels)` | 校验并构造多声道音频。      |
+| `from_path(path)`                                       | 解码本地文件。              |
+| `from_encoded_bytes(bytes)`                             | 解码编码字节。              |
+| `from_base64(data)`                                     | 解码 base64 音频。          |
+| `from_pcm_s16le(bytes, sample_rate, channels)`          | 解码 PCM S16LE。            |
+| `from_source(&source)`                                  | 从任意 `AudioSource` 解码。 |
+
+## Audio transformations {id="audio-transformations",tag="methods"}
+
+变换方法借用 `&self` 并返回新的 `Audio`，不会原地修改样本。
+
+> #### Example
+>
+> ```rust
+> use asr_data::{Audio, DurationMs};
+>
+> const URL: &str =
+>     "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav";
+>
+> fn main() -> Result<(), Box<dyn std::error::Error>> {
+>     let audio = Audio::from_url(URL)?;
+>     let mono = audio.to_mono()?;
+>     let resampled = mono.resample(16_000)?;
+>     let clip = resampled.slice_ms(0, 1_000);
+>     let parts = resampled.split_at_low_energy(DurationMs(10_000))?;
+>
+>     println!("{} samples", clip.samples.len());
+>     println!("{} parts", parts.len());
+>     Ok(())
+> }
+> ```
+
+| Method                              | Returns                          | Description           |
+| ----------------------------------- | -------------------------------- | --------------------- |
+| `to_mono()`                         | `Result<Audio, AudioError>`      | 混合为单声道。        |
+| `channel(index)`                    | `Result<Audio, AudioError>`      | 提取指定声道。        |
+| `resample(sample_rate)`             | `anyhow::Result<Audio>`          | 重采样。              |
+| `slice_ms(start_ms, end_ms)`        | `Audio`                          | 按毫秒截取。          |
+| `split_at_low_energy(max_duration)` | `Result<Vec<Audio>, AudioError>` | 低能量拆分。          |
+| `to_i16_pcm()`                      | `Vec<i16>`                       | 转换为 PCM i16 样本。 |
+
+## Audio::into_chunks_ms {id="audio-chunks",tag="method"}
+
+消耗 `Audio` 并返回惰性 `AudioChunks` 迭代器，适合不再需要完整波形的场景；若仍需
+保留原音频，使用借用版本 `chunks_ms()`。
+
+> #### Example
+>
+> ```rust
+> use asr_data::Audio;
+>
+> const URL: &str =
+>     "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav";
+>
+> fn main() -> Result<(), Box<dyn std::error::Error>> {
+>     let audio = Audio::from_url(URL)?;
+>     for chunk in audio.into_chunks_ms(100)? {
+>         println!("{} ms, final={}", chunk.offset_ms, chunk.is_final);
+>     }
+>     Ok(())
+> }
+> ```
+
+| Name            | Description                                             |
+| --------------- | ------------------------------------------------------- |
+| `self`          | 消耗当前 `Audio`。                                      |
+| `chunk_size_ms` | 每块目标时长，必须大于零。~~u64~~                       |
+| **RETURNS**     | 音频块迭代器。~~Result&lt;AudioChunks, AudioError&gt;~~ |
+
+## AudioChunk {id="audio-chunk",tag="struct"}
+
+带有原始音频中起始位置的帧对齐音频块。`Audio::chunks_ms()`、
+`Audio::into_chunks_ms()` 和流式加载都使用这一类型。
+
+| Field           | Description                                     |
+| --------------- | ----------------------------------------------- |
+| `samples`       | 按帧交错的归一化 `f32` 样本。~~Vec&lt;f32&gt;~~ |
+| `sample_rate`   | 每秒采样数。~~u32~~                             |
+| `channels`      | 声道数。~~u16~~                                 |
+| `source_format` | 原始编码信息。~~Option&lt;AudioFormat&gt;~~     |
+| `offset_ms`     | chunk 在原始音频中的起始毫秒。~~u64~~           |
+| `is_final`      | 是否为该音频的最后一块。~~bool~~                |
+
+| Method                       | Returns                      | Description      |
+| ---------------------------- | ---------------------------- | ---------------- |
+| `frame_count()`              | `usize`                      | 音频帧数。       |
+| `duration_ms()`              | `f64`                        | chunk 时长。     |
+| `to_i16_pcm()`               | `Vec<i16>`                   | 转换为 PCM i16。 |
+| `channel(index)`             | `Result<AudioChunk, _>`      | 提取指定声道。   |
+| `to_mono()`                  | `Result<AudioChunk, _>`      | 混合为单声道。   |
+| `resample(sample_rate)`      | `anyhow::Result<AudioChunk>` | 重采样。         |
+| `slice_ms(start_ms, end_ms)` | `AudioChunk`                 | 按毫秒截取。     |
+
+## 音频格式类型 {id="audio-types",tag="types"}
+
+`AudioChannel` 用 `Mono`、`Left`、`Right` 或 `Channel(u16)` 表示文档时间轴的规范
+声道。`AudioEncoding` 表示来源编码，支持 `Wav`、`Flac`、`Mp3`、
+`Ogg`、`PcmS16Le`、`Other(String)` 和 `Unknown`。
+
+`AudioFormat` 保留解码前的格式信息：
+
+| Field         | Type            | Description  |
+| ------------- | --------------- | ------------ |
+| `encoding`    | `AudioEncoding` | 音频编码。   |
+| `sample_rate` | `u32`           | 原始采样率。 |
+| `channels`    | `u16`           | 原始声道数。 |
+
+`AudioFormat::pcm16_mono(sample_rate)` 可便捷创建单声道 PCM S16LE 格式。
+
+## AudioDoc {id="audio-doc",tag="struct"}
+
+一条可持久化音频记录，拥有 [`AudioSource`](#audio-source)、各声道
+[`Timeline`](#timeline) 和业务 metadata。
+
+| Field      | Description                                           |
+| ---------- | ----------------------------------------------------- |
+| `id`       | 稳定的业务 ID。~~String~~                             |
+| `source`   | 原始音频来源。~~AudioSource~~                         |
+| `metadata` | 有序 JSON metadata。~~BTreeMap&lt;String, Value&gt;~~ |
+
+timeline 字段通过方法访问，以维持声道、duration 和 audio ID 约束。
+
+## AudioDoc::with_id {id="audio-doc-with-id",tag="associated function"}
+
+使用给定 ID 和来源创建记录。需要自动 ID 时使用 `AudioDoc::new(source)`。
+
+> #### Example
+>
+> ```rust
+> use asr_data::{AudioDoc, AudioSource};
+>
+> const URL: &str =
+>     "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav";
+>
+> fn main() {
+>     let doc = AudioDoc::with_id(
+>         "example-001",
+>         AudioSource::from_url(URL),
+>     );
+>     println!("{}", doc.id);
+> }
+> ```
+
+| Name        | Description                                                     |
+| ----------- | --------------------------------------------------------------- |
+| `audio_id`  | 可转换为 `String` 的记录 ID。~~impl Into&lt;String&gt;~~        |
+| `source`    | 可转换为 `AudioSource` 的来源。~~impl Into&lt;AudioSource&gt;~~ |
+| **RETURNS** | 新音频记录。~~AudioDoc~~                                        |
+
+## AudioDoc::ensure_timeline {id="audio-doc-ensure-timeline",tag="method"}
+
+返回已有 timeline 的可变借用，或为声道创建 timeline。首个声道必须提供 duration；
+后续声道可传 `None` 复用已确定的 duration。
+
+> #### Example
+>
+> ```rust
+> use asr_data::{AudioChannel, AudioDoc, AudioSource, DurationMs};
+>
+> const URL: &str =
+>     "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav";
+>
+> fn main() -> Result<(), Box<dyn std::error::Error>> {
+>     let source = AudioSource::from_url(URL);
+>     let duration = DurationMs(source.load()?.duration_ms().ceil() as u64);
+>     let mut doc = AudioDoc::with_id("example-001", source);
+>
+>     doc.ensure_timeline(AudioChannel::Left, Some(duration))?;
+>     doc.ensure_timeline(AudioChannel::Right, None)?;
+>     doc.validate()?;
+>
+>     println!("{} timelines", doc.timelines().len());
+>     Ok(())
+> }
+> ```
+
+| Name        | Description                                                              |
+| ----------- | ------------------------------------------------------------------------ |
+| `&mut self` | 可变借用记录。                                                           |
+| `channel`   | 规范声道。~~AudioChannel~~                                               |
+| `duration`  | timeline 时长。~~Option&lt;DurationMs&gt;~~                              |
+| **RETURNS** | timeline 的可变借用。~~Result&lt;&mut Timeline, AudioTimelineError&gt;~~ |
+
+## AudioDoc timeline methods {id="audio-doc-timelines",tag="methods"}
+
+| Method                     | Returns                                            | Description        |
+| -------------------------- | -------------------------------------------------- | ------------------ |
+| `timeline(channel)`        | `Result<Option<&Timeline>, AudioChannelError>`     | 只读查询。         |
+| `timeline_mut(channel)`    | `Result<Option<&mut Timeline>, AudioChannelError>` | 可变查询。         |
+| `mono_timeline()`          | `Option<&Timeline>`                                | 单声道便捷查询。   |
+| `timelines()`              | `&BTreeMap<AudioChannel, Timeline>`                | 全部 timeline。    |
+| `remove_timeline(channel)` | `Result<Option<Timeline>, AudioChannelError>`      | 删除并取得所有权。 |
+| `timeline_duration()`      | `Option<DurationMs>`                               | 已确定的统一时长。 |
+| `validate()`               | `Result<(), AudioValidationError>`                 | 校验完整记录。     |
+
+## Timeline {id="timeline",tag="struct"}
+
+一个声道的时间轴。Rust API 使用两个 `Vec<Annotation>` 明确分离参考真值和预测。
+
+| Field        | Description                                       |
+| ------------ | ------------------------------------------------- |
+| `id`         | Timeline ID。~~TimelineId~~                       |
+| `audio_id`   | 所属 AudioDoc ID。~~AudioId~~                     |
+| `duration`   | 总时长。~~DurationMs~~                            |
+| `reference`  | 不带 source 的参考标注。~~Vec&lt;Annotation&gt;~~ |
+| `prediction` | 带 source 的预测标注。~~Vec&lt;Annotation&gt;~~   |
+
+## Timeline::new {id="timeline-new",tag="associated function"}
+
+创建空 timeline。
+
+| Name        | Description                               |
+| ----------- | ----------------------------------------- |
+| `audio_id`  | 所属记录 ID。~~impl Into&lt;AudioId&gt;~~ |
+| `duration`  | 总时长。~~DurationMs~~                    |
+| **RETURNS** | 新 timeline。~~Timeline~~                 |
+
+## Timeline::push_reference_unique {id="timeline-push-reference",tag="method"}
+
+加入参考标注并按内容去重。方法会强制将 `source` 设为 `None`。
+
+> #### Example
+>
+> ```rust
+> use asr_data::{
+>     Annotation, AnnotationPayload, AnnotationStatus, DurationMs,
+>     TimeRange, Timeline, Transcription,
+> };
+>
+> fn main() {
+>     let duration = DurationMs(4_205);
+>     let mut timeline = Timeline::new("example-001", duration);
+>     let transcription = Transcription::new(
+>         "甚至出现交易几乎停滞的情况",
+>     );
+>     let annotation = Annotation::new(
+>         TimeRange::new(DurationMs(0), duration),
+>         AnnotationPayload::Transcription(transcription),
+>         None,
+>         AnnotationStatus::Final,
+>     );
+>
+>     let stored = timeline.push_reference_unique(annotation);
+>     println!("{}", stored.id);
+> }
+> ```
+
+| Name         | Description                                       |
+| ------------ | ------------------------------------------------- |
+| `&mut self`  | 可变借用 timeline。                               |
+| `annotation` | 要加入的标注，所有权移入 timeline。~~Annotation~~ |
+| **RETURNS**  | 新标注或已有重复项的借用。~~&Annotation~~         |
+
+不需要去重时使用 `push_reference()`。
+
+## Timeline::push_prediction_unique {id="timeline-push-prediction",tag="method"}
+
+加入预测标注并按内容去重。调用者应提供非空 source；`AudioDoc::validate()` 会再次
+检查该约束。
+
+> #### Example
+>
+> ```rust
+> use asr_data::{
+>     Annotation, AnnotationPayload, AnnotationStatus, DurationMs,
+>     TimeRange, Timeline, Transcription,
+> };
+>
+> fn main() {
+>     let duration = DurationMs(4_205);
+>     let mut timeline = Timeline::new("example-001", duration);
+>     let annotation = Annotation::new(
+>         TimeRange::new(DurationMs(0), duration),
+>         AnnotationPayload::Transcription(Transcription::new(
+>             "甚至出现交易几乎停滞的情况",
+>         )),
+>         Some("whisper-large".to_owned()),
+>         AnnotationStatus::Final,
+>     );
+>
+>     timeline.push_prediction_unique(annotation);
+>     println!("{:?}", timeline.prediction_sources());
+> }
+> ```
+
+不需要去重时使用 `push_prediction()`。
+
+## Timeline query methods {id="timeline-query",tag="methods"}
+
+| Method                                 | Returns                             | Description              |
+| -------------------------------------- | ----------------------------------- | ------------------------ |
+| `all_annotations()`                    | `impl Iterator<Item = &Annotation>` | 遍历两个集合。           |
+| `annotation_count()`                   | `usize`                             | 标注总数。               |
+| `by_status(status)`                    | `Vec<&Annotation>`                  | 按状态查询。             |
+| `predictions_by_source(source)`        | `impl Iterator<Item = &Annotation>` | 查询某个预测来源。       |
+| `prediction_sources()`                 | `Vec<&str>`                         | 排序、去重后的来源。     |
+| `reference_transcript()`               | `Transcript`                        | 组合参考转写。           |
+| `prediction_transcript(source)`        | `Transcript`                        | 组合指定来源的预测转写。 |
+| `remove_predictions_by_source(source)` | `usize`                             | 删除来源并返回数量。     |
+| `relabel_prediction_source(from, to)`  | `usize`                             | 重命名来源并返回数量。   |
+
+## Annotation {id="annotation",tag="struct"}
+
+带时间范围、状态、来源、置信度和 [`AnnotationPayload`](#annotation-payload) 的记
+录。
+
+| Field        | Description                                             |
+| ------------ | ------------------------------------------------------- |
+| `id`         | 自动生成的标注 ID。~~AnnotationId~~                     |
+| `range`      | 时间范围。~~TimeRange~~                                 |
+| `status`     | 生命周期状态。~~AnnotationStatus~~                      |
+| `source`     | 预测来源；reference 为 `None`。~~Option&lt;String&gt;~~ |
+| `confidence` | annotation 级置信度。~~Option&lt;f32&gt;~~              |
+| `payload`    | 标注内容。~~AnnotationPayload~~                         |
+
+## Annotation::new {id="annotation-new",tag="associated function"}
+
+创建标注并生成 ID。`with_confidence(value)` 以 builder 风格附加置信度。
+
+| Name        | Description                            |
+| ----------- | -------------------------------------- |
+| `range`     | 时间范围。~~TimeRange~~                |
+| `payload`   | 标注内容。~~AnnotationPayload~~        |
+| `source`    | 可选预测来源。~~Option&lt;String&gt;~~ |
+| `status`    | 标注状态。~~AnnotationStatus~~         |
+| **RETURNS** | 新标注。~~Annotation~~                 |
+
+`content_eq(&other)` 比较业务内容并忽略自动生成的 ID，用于实现 annotation 去重。
+
+## AnnotationPayload {id="annotation-payload",tag="enum"}
+
+`Annotation`、`AnnotationPayload`、`SpeakerPayload`、`Transcription` 和 `Token`
+的实现统一位于 `timeline::annotation` 模块，并从 crate root 公开导出。
+
+| Variant                        | Description          |
+| ------------------------------ | -------------------- |
+| `Speech`                       | 语音活动范围。       |
+| `Token(Token)`                 | 单个细粒度文本单元。 |
+| `Transcription(Transcription)` | 完整转写。           |
+| `Sentence(TextSpan)`           | 句子级文本片段。     |
+| `Speaker(SpeakerPayload)`      | 说话人发话。         |
+| `Language(LanguageTag)`        | 语言信息。           |
+| `AcousticEvent(AcousticEvent)` | 非语音声学事件。     |
+
+Silence variant 已删除。
+
+## Transcription {id="transcription",tag="struct"}
+
+完整转写 payload，可以包含 [`Token`](#token) 列表。`Transcription::new(text)` 提
+供合理默认值；再按需修改公开字段是 Rust 中最直接的构造方式。
+
+> #### Example
+>
+> ```rust
+> use asr_data::{DurationMs, TimeRange, Token, Transcription};
+>
+> fn main() {
+>     let mut transcription = Transcription::new(
+>         "甚至出现交易几乎停滞的情况",
+>     );
+>     transcription.language = Some("zh".to_owned());
+>     transcription.confidence = Some(0.93);
+>     transcription.tokens = vec![
+>         Token::new("甚至出现").with_range(TimeRange::new(
+>             DurationMs(0),
+>             DurationMs(1_800),
+>         )),
+>         Token::new("交易几乎停滞的情况").with_range(TimeRange::new(
+>             DurationMs(1_800),
+>             DurationMs(4_205),
+>         )),
+>     ];
+>
+>     println!("{}", transcription.text);
+> }
+> ```
+
+| Field        | Description                             |
+| ------------ | --------------------------------------- |
+| `text`       | 完整转写文本。~~String~~                |
+| `tokens`     | 细粒度 token。~~Vec&lt;Token&gt;~~      |
+| `language`   | 可选语言标签。~~Option&lt;String&gt;~~  |
+| `confidence` | 可选转写级置信度。~~Option&lt;f32&gt;~~ |
+
+## SpeakerPayload {id="speaker-payload",tag="struct"}
+
+一次说话人发话，由名称和可选 [`Transcription`](#transcription) 组成。
+
+> #### Example
+>
+> ```rust
+> use asr_data::{SpeakerPayload, Transcription};
+>
+> fn main() {
+>     let mut speaker = SpeakerPayload::new("agent");
+>     speaker.transcription = Some(Transcription::new(
+>         "甚至出现交易几乎停滞的情况",
+>     ));
+>
+>     let text = speaker
+>         .transcription
+>         .as_ref()
+>         .map(|value| value.text.as_str())
+>         .unwrap_or_default();
+>     println!("{}: {}", speaker.name, text);
+> }
+> ```
+
+| Field           | Description                                         |
+| --------------- | --------------------------------------------------- |
+| `name`          | 说话人名称或业务 ID。~~SpeakerId~~                  |
+| `transcription` | 该次发话的完整转写。~~Option&lt;Transcription&gt;~~ |
+
+## Token {id="token",tag="struct"}
+
+细粒度文本单元。构造方法采用 builder 风格，便于链式设置可选字段。
+
+> #### Example
+>
+> ```rust
+> use asr_data::{DurationMs, TimeRange, Token};
+>
+> fn main() {
+>     let token = Token::new("甚至出现")
+>         .with_range(TimeRange::new(
+>             DurationMs(0),
+>             DurationMs(1_800),
+>         ))
+>         .with_confidence(0.95);
+>
+>     println!("{}", token.text);
+> }
+> ```
+
+| Field        | Description                                |
+| ------------ | ------------------------------------------ |
+| `text`       | Token 文本。~~String~~                     |
+| `range`      | 可选时间范围。~~Option&lt;TimeRange&gt;~~  |
+| `confidence` | 可选 token 级置信度。~~Option&lt;f32&gt;~~ |
+
+## Transcript {id="transcript",tag="struct"}
+
+`Timeline::reference_transcript()` 或 `prediction_transcript()` 生成的组合结果。
+
+| Field      | Description                                 |
+| ---------- | ------------------------------------------- |
+| `text`     | 按开始时间组合的文本。~~String~~            |
+| `language` | 首个可用语言标签。~~Option&lt;String&gt;~~  |
+| `segments` | 参与组合的文本片段。~~Vec&lt;TextSpan&gt;~~ |
+
+## AudioDb {id="audio-db",tag="struct"}
+
+SQLite 数据库句柄。写操作借用句柄；仅 `update_many()` 因事务需要可变借用。
+
+## AudioDb::open {id="audio-db-open",tag="associated function"}
+
+以读写或只读模式打开数据库。读写模式会创建文件并初始化 schema。
+
+> #### Example
+>
+> ```rust
+> use std::fs;
+>
+> use asr_data::{AudioDb, AudioDbMode};
+>
+> fn main() -> Result<(), Box<dyn std::error::Error>> {
+>     let path = std::env::temp_dir().join("asr-data-open-example.db");
+>     let _ = fs::remove_file(&path);
+>
+>     let db = AudioDb::open(&path, AudioDbMode::ReadWrite)?;
+>     println!("schema {}", AudioDb::SCHEMA_VERSION);
+>     drop(db);
+>
+>     let readonly = AudioDb::open(&path, AudioDbMode::ReadOnly)?;
+>     drop(readonly);
+>     fs::remove_file(path)?;
+>     Ok(())
+> }
+> ```
+
+| Name        | Description                                         |
+| ----------- | --------------------------------------------------- |
+| `path`      | 数据库文件路径。~~impl AsRef&lt;Path&gt;~~          |
+| `mode`      | `ReadWrite` 或 `ReadOnly`。~~AudioDbMode~~          |
+| **RETURNS** | 数据库句柄。~~Result&lt;AudioDb, AudioDbError&gt;~~ |
+
+## AudioDb CRUD {id="audio-db-crud",tag="methods"}
+
+> #### Example
+>
+> ```rust
+> use std::fs;
+>
+> use asr_data::{
+>     AudioDb, AudioDbMode, AudioDoc, AudioSource,
+> };
+>
+> const URL: &str =
+>     "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav";
+>
+> fn main() -> Result<(), Box<dyn std::error::Error>> {
+>     let path = std::env::temp_dir().join("asr-data-crud-example.db");
+>     let _ = fs::remove_file(&path);
+>     let db = AudioDb::open(&path, AudioDbMode::ReadWrite)?;
+>
+>     let doc = AudioDoc::with_id("example-001", AudioSource::from_url(URL));
+>     db.insert(&doc)?;
+>     let loaded = db.get("example-001")?.expect("inserted audio");
+>     println!("{}", loaded.id);
+>     assert!(db.contains("example-001")?);
+>     assert!(db.delete("example-001")?);
+>
+>     drop(db);
+>     fs::remove_file(path)?;
+>     Ok(())
+> }
+> ```
+
+| Method                 | Returns                                  | Description          |
+| ---------------------- | ---------------------------------------- | -------------------- |
+| `insert(&audio)`       | `Result<(), AudioDbError>`               | 插入新记录。         |
+| `get(audio_id)`        | `Result<Option<AudioDoc>, AudioDbError>` | 按 ID 查询。         |
+| `contains(audio_id)`   | `Result<bool, AudioDbError>`             | 判断是否存在。       |
+| `update(&audio)`       | `Result<bool, AudioDbError>`             | 仅在内容变化时更新。 |
+| `update_many(&audios)` | `Result<usize, AudioDbError>`            | 在事务中批量更新。   |
+| `delete(audio_id)`     | `Result<bool, AudioDbError>`             | 删除记录。           |
+
+## AudioDb metadata {id="audio-db-metadata",tag="methods"}
+
+| Method                      | Returns                                         | Description           |
+| --------------------------- | ----------------------------------------------- | --------------------- |
+| `set_metadata(key, &value)` | `Result<(), AudioDbError>`                      | 设置数据库 metadata。 |
+| `metadata(key)`             | `Result<Option<Value>, AudioDbError>`           | 读取单个值。          |
+| `all_metadata()`            | `Result<BTreeMap<String, Value>, AudioDbError>` | 读取全部值。          |
+| `delete_metadata(key)`      | `Result<bool, AudioDbError>`                    | 删除值。              |
+
+`read_audio_db_info(path)` 可以不加载文档内容就读取数据库概况，返回
+`AudioDbInfo { schema_version, audios, total_duration }`。
+
+## AudioQuery {id="audio-query",tag="struct"}
+
+数据库查询参数。通常从 `AudioQuery::default()` 开始，只覆盖所需字段。
+
+> #### Example
+>
+> ```rust
+> use std::fs;
+>
+> use asr_data::{
+>     AudioDb, AudioDbMode, AudioDoc, AudioQuery, AudioSource,
+> };
+>
+> const URL: &str =
+>     "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav";
+>
+> fn main() -> Result<(), Box<dyn std::error::Error>> {
+>     let path = std::env::temp_dir().join("asr-data-query-example.db");
+>     let _ = fs::remove_file(&path);
+>     let db = AudioDb::open(&path, AudioDbMode::ReadWrite)?;
+>
+>     let mut doc = AudioDoc::with_id("example-001", AudioSource::from_url(URL));
+>     doc.metadata.insert("split".into(), serde_json::json!("train"));
+>     db.insert(&doc)?;
+>
+>     let mut query = AudioQuery::default();
+>     query.limit = 100;
+>     query.metadata.insert("split".into(), serde_json::json!("train"));
+>     let page = db.query(&query)?;
+>     println!("{} result", page.len());
+>
+>     drop(db);
+>     fs::remove_file(path)?;
+>     Ok(())
+> }
+> ```
+
+此示例需要在 `Cargo.toml` 中同时依赖 `serde_json`。
+
+| Field          | Description                                            |
+| -------------- | ------------------------------------------------------ |
+| `limit`        | 最大返回数，默认 `DEFAULT_QUERY_LIMIT`。~~usize~~      |
+| `after`        | 上一页最后一个 audio ID。~~Option&lt;String&gt;~~      |
+| `min_duration` | 可选最短时长。~~Option&lt;DurationMs&gt;~~             |
+| `max_duration` | 可选最长时长。~~Option&lt;DurationMs&gt;~~             |
+| `metadata`     | 精确匹配的 metadata。~~BTreeMap&lt;String, Value&gt;~~ |
+
+`limit` 不得超过 `MAX_QUERY_LIMIT`（10,000），且最短时长不得大于最长时长。
+
+## 时间类型 {id="time-types",tag="structs"}
+
+Rust API 用 newtype 表示时间和采样点，避免把不同单位的整数混用。
+
+| Type                       | Description                             |
+| -------------------------- | --------------------------------------- |
+| `DurationMs(pub u64)`      | 毫秒时长；`seconds()` 转换为 `f64` 秒。 |
+| `SampleIndex(pub u64)`     | 采样点索引。                            |
+| `TimeRange { start, end }` | 半开时间范围。                          |
+
+`TimeRange::duration()` 返回饱和相减后的时长；`overlaps(&other)` 判断范围重叠；
+`contains(point)` 使用 `start <= point < end`。
+
+## CER {id="cer",tag="functions"}
+
+计算字符错误率。
+
+> #### Example
+>
+> ```rust
+> use asr_data::{compute_cer, normalize_for_cer};
+>
+> fn main() {
+>     let reference = normalize_for_cer(
+>         "甚至出现交易几乎停滞的情况",
+>         true,
+>     );
+>     let hypothesis = normalize_for_cer(
+>         "甚至出现交易几乎停止的情况",
+>         true,
+>     );
+>     let stats = compute_cer(&reference, &hypothesis);
+>     println!("CER: {:.2}%", stats.cer() * 100.0);
+> }
+> ```
+
+| Function                                 | Returns    | Description                          |
+| ---------------------------------------- | ---------- | ------------------------------------ |
+| `normalize_for_cer(text, remove_spaces)` | `String`   | 移除标点，并按参数决定是否移除空白。 |
+| `compute_cer(reference, hypothesis)`     | `CerStats` | 计算编辑距离统计。                   |
+
+## 错误类型 {id="errors",tag="enums"}
+
+公共错误均实现 `std::error::Error`，应用层可以使用 `?` 传播或按 enum variant 精
+确匹配。
+
+| Type                   | Scope                           |
+| ---------------------- | ------------------------------- |
+| `AudioError`           | 样本、声道、PCM 和 chunk 校验。 |
+| `AudioDbError`         | SQLite、序列化、查询和迁移。    |
+| `AudioChannelError`    | 非规范声道。                    |
+| `AudioTimelineError`   | timeline duration 创建约束。    |
+| `AudioValidationError` | AudioDoc 完整性校验。           |
+| `LegacyImportError`    | 旧 MessagePack 导入。           |
 
 完整定义以 [crate 源码](https://github.com/di-osc/asr-data/blob/main/src/lib.rs)
 和生成的 rustdoc 为准。

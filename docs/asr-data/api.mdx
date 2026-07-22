@@ -1,125 +1,1146 @@
 ---
 title: Python API
-teaser: asr-data 0.1.0 的 Python 公共接口
+version: 0.1.1
 section: asr-data
 menu:
+  - ['AudioSource', 'audio-source']
   - ['Audio', 'audio']
-  - ['Waveform', 'waveform']
+  - ['AudioChunk', 'audio-chunk']
+  - ['AudioDoc', 'audio-doc']
   - ['Timeline', 'timeline']
+  - ['ReferenceAnnotations', 'reference-annotations']
+  - ['PredictionAnnotations', 'prediction-annotations']
+  - ['Token', 'token']
+  - ['Transcription', 'transcription']
+  - ['Speaker', 'speaker']
+  - ['Transcript', 'transcript']
   - ['Annotation', 'annotation']
-  - ['AudioDB', 'audiodb']
-  - ['类型别名', 'types']
+  - ['AudioDB', 'audio-db']
+  - ['AnnotationStatus', 'annotation-status']
+  - ['AnnotationKind', 'annotation-kind']
+  - ['AnnotationPayload', 'annotation-payload-alias']
+  - ['AsrDataError', 'asr-data-error']
 ---
 
-本页记录 `asr-data` 0.1.0 暴露的 Python 接口。所有类型均可直接从
-`asr_data` 导入。
+## AudioSource {id="audio-source",tag="class"}
 
-## Audio {id="audio"}
+描述尚未解码的音频来源。来源可以是文件路径、URL、编码字节、base64 字符串或 PCM
+S16LE 字节。`AudioSource` 可以加载为完整 [`Audio`](#audio)，也可以流式产生
+[`AudioChunk`](#audio-chunk)。
+
+## AudioSource.from_path {id="audio-source-from-path",tag="class method"}
+
+从本地音频文件创建来源。文件会在调用 `load()` 或 `stream()` 时解码。
+
+> #### Example
+>
+> ```python
+> from pathlib import Path
+> from tempfile import TemporaryDirectory
+> from urllib.request import urlretrieve
+>
+> from asr_data import AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+>
+> with TemporaryDirectory() as directory:
+>     path = Path(directory) / "example.wav"
+>     urlretrieve(URL, path)
+>     source = AudioSource.from_path(str(path))
+>     audio = source.load()
+>     print(audio.duration_ms)
+> ```
+
+| Name        | Description                   |
+| ----------- | ----------------------------- |
+| `path`      | 本地音频文件路径。~~str~~     |
+| **RETURNS** | 新的音频来源。~~AudioSource~~ |
+
+## AudioSource.from_url {id="audio-source-from-url",tag="class method"}
+
+从 HTTP 或 HTTPS 地址创建来源。网络请求在加载或流式读取时执行。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+> audio = source.load(mono=True, sample_rate=16_000)
+> print(audio.sample_rate, audio.channels, audio.duration_ms)
+> ```
+
+| Name        | Description                     |
+| ----------- | ------------------------------- |
+| `url`       | HTTP 或 HTTPS 音频地址。~~str~~ |
+| **RETURNS** | 新的音频来源。~~AudioSource~~   |
+
+## AudioSource.from_bytes {id="audio-source-from-bytes",tag="class method"}
+
+从内存中的编码音频字节创建来源。
+
+> #### Example
+>
+> ```python
+> from urllib.request import urlopen
+>
+> from asr_data import AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> with urlopen(URL) as response:
+>     audio_bytes = response.read()
+>
+> source = AudioSource.from_bytes(audio_bytes)
+> audio = source.load()
+> print(audio.sample_rate, audio.channels, audio.duration_ms)
+> ```
+
+| Name        | Description                        |
+| ----------- | ---------------------------------- |
+| `data`      | WAV、MP3 等编码音频字节。~~bytes~~ |
+| **RETURNS** | 新的音频来源。~~AudioSource~~      |
+
+## AudioSource.from_base64 {id="audio-source-from-base64",tag="class method"}
+
+从包含编码音频的 base64 字符串创建来源。
+
+> #### Example
+>
+> ```python
+> import base64
+> from urllib.request import urlopen
+>
+> from asr_data import AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> with urlopen(URL) as response:
+>     audio_bytes = response.read()
+>
+> audio_base64 = base64.b64encode(audio_bytes).decode("ascii")
+> source = AudioSource.from_base64(audio_base64)
+> audio = source.load()
+> print(audio.sample_rate, audio.channels, audio.duration_ms)
+> ```
+
+| Name        | Description                    |
+| ----------- | ------------------------------ |
+| `data`      | base64 编码的音频内容。~~str~~ |
+| **RETURNS** | 新的音频来源。~~AudioSource~~  |
+
+## AudioSource.from_pcm {id="audio-source-from-pcm",tag="class method"}
+
+从 PCM S16LE 字节创建来源。
+
+> #### Example
+>
+> ```python
+> import numpy as np
+>
+> from asr_data import Audio, AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> audio = Audio.from_url(URL).to_mono().resample(16_000)
+> pcm_bytes = (
+>     np.clip(audio.samples, -1.0, 1.0) * 32_767
+> ).astype("<i2").tobytes()
+>
+> source = AudioSource.from_pcm(
+>     pcm_bytes,
+>     sample_rate=16_000,
+>     channels=1,
+> )
+> decoded = source.load()
+> print(decoded.sample_rate, decoded.channels)
+> ```
+
+| Name          | Description                   |
+| ------------- | ----------------------------- |
+| `data`        | PCM S16LE 字节。~~bytes~~     |
+| `sample_rate` | 每秒采样数。~~int~~           |
+| `channels`    | 声道数，默认为 `1`。~~int~~   |
+| **RETURNS**   | 新的音频来源。~~AudioSource~~ |
+
+## AudioSource.load {id="audio-source-load",tag="method"}
+
+同步解码完整音频，可在解码时完成重采样和单声道混合。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+> audio = source.load(sample_rate=16_000, mono=True)
+> print(audio.duration_ms)
+> ```
+
+| Name           | Description                                       |
+| -------------- | ------------------------------------------------- |
+| _keyword-only_ |                                                   |
+| `sample_rate`  | 目标采样率；省略时保留原采样率。~~Optional[int]~~ |
+| `mono`         | 是否下混为单声道。~~Optional[bool]~~              |
+| **RETURNS**    | 解码后的完整音频。~~Audio~~                       |
+
+异步程序使用相同参数调用 `await source.aload(...)`。
+
+## AudioSource.stream {id="audio-source-stream",tag="method"}
+
+按固定目标时长逐块解码音频。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+>
+> for chunk in source.stream(chunk_size_ms=100):
+>     print(chunk.offset_ms, chunk.duration_ms, chunk.is_final)
+> ```
+
+| Name            | Description                                        |
+| --------------- | -------------------------------------------------- |
+| `chunk_size_ms` | 每块的目标时长，默认为 `100`。~~int~~              |
+| _keyword-only_  |                                                    |
+| `sample_rate`   | 可选目标采样率。~~Optional[int]~~                  |
+| `mono`          | 是否下混为单声道。~~Optional[bool]~~               |
+| **YIELDS**      | 带偏移和结束标志的音频块。~~Iterator[AudioChunk]~~ |
+
+异步迭代使用 `source.astream(...)`，参数与返回元素相同。
+
+## AudioSource properties {id="audio-source-properties",tag="properties"}
+
+| Name          | Description                                                    |
+| ------------- | -------------------------------------------------------------- |
+| `kind`        | 来源类型。~~Literal["path", "url", "bytes", "base64", "pcm"]~~ |
+| `path`        | Path 来源的路径，否则为 `None`。~~Optional[str]~~              |
+| `url`         | URL 来源的地址，否则为 `None`。~~Optional[str]~~               |
+| `bytes`       | 编码字节，否则为 `None`。~~Optional[bytes]~~                   |
+| `base64`      | base64 内容，否则为 `None`。~~Optional[str]~~                  |
+| `pcm`         | PCM 字节，否则为 `None`。~~Optional[bytes]~~                   |
+| `sample_rate` | PCM 采样率，否则为 `None`。~~Optional[int]~~                   |
+| `channels`    | PCM 声道数，否则为 `None`。~~Optional[int]~~                   |
+
+## Audio {id="audio",tag="class"}
+
+解码后的 `float32` 音频样本。`Audio` 是内存中的波形，不是数据库记录。
+
+## Audio.\_\_init\_\_ {id="audio-init",tag="method"}
+
+用样本数组直接构造音频。
+
+> #### Example
+>
+> ```python
+> from asr_data import Audio
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> loaded = Audio.from_url(URL).to_mono().resample(16_000)
+> audio = Audio(loaded.samples, sample_rate=16_000, channels=1)
+> print(audio.frame_count, audio.duration_ms)
+> ```
+
+| Name          | Description                                              |
+| ------------- | -------------------------------------------------------- |
+| `samples`     | 可转换为 NumPy 数组的样本，多声道按帧交错。~~ArrayLike~~ |
+| `sample_rate` | 每秒采样数。~~int~~                                      |
+| `channels`    | 声道数，默认为 `1`。~~int~~                              |
+
+## Audio.from\_\* {id="audio-factories",tag="class methods"}
+
+直接创建并解码 `Audio`。支持 `from_path()`、`from_url()`、`from_bytes()`、
+`from_base64()`、`from_pcm()` 和 `from_source()`；参数与对应的
+`AudioSource.from_*()` 一致。
+
+> #### Example
+>
+> ```python
+> from asr_data import Audio, AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+> audio = Audio.from_source(source)
+> print(audio.sample_rate, audio.channels)
+> ```
+
+| Name        | Description                 |
+| ----------- | --------------------------- |
+| **RETURNS** | 解码后的完整音频。~~Audio~~ |
+
+异步环境使用 `await Audio.aload_from_path(path)` 或
+`await Audio.aload_from_source(source)`；两者同样返回 [`Audio`](#audio)。
+
+## Audio properties {id="audio-properties",tag="properties"}
+
+| Name            | Description                                 |
+| --------------- | ------------------------------------------- |
+| `samples`       | 解码后的样本副本。~~NDArray[float32]~~      |
+| `sample_rate`   | 每秒采样数。~~int~~                         |
+| `channels`      | 声道数。~~int~~                             |
+| `frame_count`   | 音频帧数。~~int~~                           |
+| `duration_ms`   | 精确时长，可能包含小数毫秒。~~float~~       |
+| `source_format` | 原始音频格式信息。~~Optional[AudioFormat]~~ |
+
+## Audio.to_mono {id="audio-to-mono",tag="method"}
+
+将所有声道平均混合为单声道，不修改原对象。
+
+| Name        | Description               |
+| ----------- | ------------------------- |
+| **RETURNS** | 新的单声道音频。~~Audio~~ |
+
+## Audio.channel {id="audio-channel",tag="method"}
+
+提取指定声道。
+
+| Name        | Description                    |
+| ----------- | ------------------------------ |
+| `index`     | 从 `0` 开始的声道索引。~~int~~ |
+| **RETURNS** | 提取的单声道音频。~~Audio~~    |
+
+## Audio.resample {id="audio-resample",tag="method"}
+
+转换采样率，不修改原对象。
+
+| Name          | Description               |
+| ------------- | ------------------------- |
+| `sample_rate` | 目标采样率。~~int~~       |
+| **RETURNS**   | 重采样后的音频。~~Audio~~ |
+
+## Audio.slice_ms {id="audio-slice",tag="method"}
+
+按毫秒范围截取音频。
+
+> #### Example
+>
+> ```python
+> from asr_data import Audio
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> audio = Audio.from_url(URL)
+> clip = audio.slice_ms(1_000, 3_000)
+> print(clip.duration_ms)
+> ```
+
+| Name        | Description             |
+| ----------- | ----------------------- |
+| `start_ms`  | 截取起始时间。~~int~~   |
+| `end_ms`    | 截取结束时间。~~int~~   |
+| **RETURNS** | 截取后的音频。~~Audio~~ |
+
+## Audio.split_at_low_energy {id="audio-split",tag="method"}
+
+在低能量位置拆分长音频。
+
+| Name              | Description                       |
+| ----------------- | --------------------------------- |
+| `max_duration_ms` | 单段最大时长。~~int~~             |
+| **RETURNS**       | 拆分后的音频列表。~~List[Audio]~~ |
+
+## Audio.display {id="audio-display",tag="method"}
+
+在 IPython 或 Notebook 中播放全部或部分音频。
+
+| Name        | Description                            |
+| ----------- | -------------------------------------- |
+| `start_ms`  | 可选播放起点。~~Optional[int]~~        |
+| `end_ms`    | 可选播放终点。~~Optional[int]~~        |
+| `autoplay`  | 是否自动播放，默认为 `False`。~~bool~~ |
+| **RETURNS** | 无返回值。~~None~~                     |
+
+## AudioChunk {id="audio-chunk",tag="class"}
+
+流式解码产生的音频块。它提供与 [`Audio`](#audio) 相同的样本、格式以及
+`to_mono()`、 `channel()`、`resample()`、`slice_ms()` 变换，并额外提供以下属性。
+
+| Name        | Description                         |
+| ----------- | ----------------------------------- |
+| `offset_ms` | 当前块相对原音频的起始偏移。~~int~~ |
+| `is_final`  | 是否为流中的最后一块。~~bool~~      |
+
+## AudioDoc {id="audio-doc",tag="class"}
+
+一条可持久化的音频记录，包含稳定 ID、[`AudioSource`](#audio-source)、业务元数据
+和各声道的 [`Timeline`](#timeline)。解码后的 [`Audio`](#audio) 和
+[`AudioChunk`](#audio-chunk) 不会直接存入 `AudioDoc`。
+
+## AudioDoc.\_\_init\_\_ {id="audio-doc-init",tag="method"}
+
+创建一条音频记录。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioDoc, AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> doc = AudioDoc(
+>     AudioSource.from_url(URL),
+>     id="call-001",
+> )
+> print(doc.id, doc.source.url)
+> ```
+
+| Name     | Description                                    |
+| -------- | ---------------------------------------------- |
+| `source` | 音频来源。~~AudioSource~~                      |
+| `id`     | 稳定业务 ID；省略时自动生成。~~Optional[str]~~ |
+
+## AudioDoc.timeline {id="audio-doc-timeline",tag="method"}
+
+查询指定声道的 timeline，不存在时返回 `None`，不会隐式创建。
+
+| Name        | Description                                                   |
+| ----------- | ------------------------------------------------------------- |
+| `channel`   | `"mono"`、`"left"`、`"right"` 或非负索引。~~Union[str, int]~~ |
+| **RETURNS** | 已有 timeline，或 `None`。~~Optional[Timeline]~~              |
+
+## AudioDoc.ensure_timeline {id="audio-doc-ensure-timeline",tag="method"}
+
+返回已有 timeline，或创建一个新的 timeline。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioDoc, AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+> audio = source.load()
+> doc = AudioDoc(source, id="example")
+>
+> left = doc.ensure_timeline("left", duration_ms=audio.duration_ms)
+> right = doc.ensure_timeline("right")
+>
+> assert left.duration_ms == right.duration_ms
+> ```
+
+| Name          | Description                                                             |
+| ------------- | ----------------------------------------------------------------------- |
+| `channel`     | 声道名称或索引。~~Union[str, int]~~                                     |
+| `duration_ms` | 首个 timeline 必须提供；浮点值向上取整。~~Optional[Union[int, float]]~~ |
+| **RETURNS**   | 已存在或新创建的 timeline。~~Timeline~~                                 |
+
+如果显式 duration 与其他声道不一致，会抛出 `AsrDataError`。
+
+## AudioDoc.remove_timeline {id="audio-doc-remove-timeline",tag="method"}
+
+删除指定声道的 timeline。
+
+| Name        | Description                         |
+| ----------- | ----------------------------------- |
+| `channel`   | 声道名称或索引。~~Union[str, int]~~ |
+| **RETURNS** | 是否存在并成功删除。~~bool~~        |
+
+## AudioDoc.validate {id="audio-doc-validate",tag="method"}
+
+检查 audio ID、各声道 duration、annotation 范围以及 reference/prediction 的
+source 约束。
+
+| Name        | Description        |
+| ----------- | ------------------ |
+| **RETURNS** | 无返回值。~~None~~ |
+
+## AudioDoc properties {id="audio-doc-properties",tag="properties"}
+
+| Name        | Description                                        |
+| ----------- | -------------------------------------------------- |
+| `id`        | 音频记录 ID。~~str~~                               |
+| `source`    | 原始音频来源。~~AudioSource~~                      |
+| `timelines` | 按声道名称索引的 timeline。~~Dict[str, Timeline]~~ |
+| `metadata`  | 可修改的 JSON 业务元数据。~~Dict[str, Any]~~       |
+
+## Timeline {id="timeline",tag="class"}
+
+某个声道上的时间轴。它将参考真值与模型预测分成两个独立集合。
+
+| Name          | Description                                         |
+| ------------- | --------------------------------------------------- |
+| `id`          | Timeline 唯一 ID。~~str~~                           |
+| `audio_id`    | 所属 AudioDoc ID，可修改。~~str~~                   |
+| `duration_ms` | Timeline 总时长。~~int~~                            |
+| `reference`   | 不带 source 的参考标注。~~ReferenceAnnotations~~    |
+| `prediction`  | 必须带 source 的预测标注。~~PredictionAnnotations~~ |
+
+所有 `add_*()` 都立即校验 `0 <= start_ms <= end_ms <= timeline.duration_ms`。内
+容完全相同的重复添加会返回已有 annotation，不会插入第二条记录。
+
+## ReferenceAnnotations {id="reference-annotations",tag="class"}
+
+参考真值集合。Reference annotation 的 `source` 始终为 `None`。
+
+## ReferenceAnnotations.add_speech {id="reference-add-speech",tag="method"}
+
+添加一段语音活动范围。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioDoc, AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+> audio = source.load()
+> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+>
+> speech = timeline.reference.add_speech(
+>     0,
+>     timeline.duration_ms,
+>     confidence=0.98,
+> )
+> print(speech.kind, speech.start_ms, speech.end_ms)
+> ```
+
+| Name         | Description                                   |
+| ------------ | --------------------------------------------- |
+| `start_ms`   | 起始时间。~~int~~                             |
+| `end_ms`     | 结束时间，不得超过 timeline duration。~~int~~ |
+| `confidence` | 可选 annotation 级置信度。~~Optional[float]~~ |
+| **RETURNS**  | Speech annotation 句柄。~~Annotation~~        |
+
+## ReferenceAnnotations.add_transcription {id="reference-add-transcription",tag="method"}
+
+添加一段完整转写。第三个参数必须是 [`Transcription`](#transcription) 对象，不接
+受纯字符串。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioDoc, AudioSource
+> from asr_data.annotation import Transcription
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+> audio = source.load()
+> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+>
+> annotation = timeline.reference.add_transcription(
+>     0,
+>     timeline.duration_ms,
+>     Transcription("甚至出现交易几乎停滞的情况", language="zh"),
+> )
+> print(annotation.payload.text)
+> ```
+
+| Name            | Description                                      |
+| --------------- | ------------------------------------------------ |
+| `start_ms`      | 起始时间。~~int~~                                |
+| `end_ms`        | 结束时间。~~int~~                                |
+| `transcription` | 完整转写 payload。~~Transcription~~              |
+| `confidence`    | 可选 annotation 级置信度。~~Optional[float]~~    |
+| `status`        | 标注状态，默认为 `"final"`。~~AnnotationStatus~~ |
+| **RETURNS**     | Transcription annotation 句柄。~~Annotation~~    |
+
+## ReferenceAnnotations.add_speaker {id="reference-add-speaker",tag="method"}
+
+添加一段说话人发话。第三个参数必须是 [`Speaker`](#speaker) 对象；其中可以直接携
+带 [`Transcription`](#transcription)。转写需要细粒度时间信息时，再为它添加
+[`Token`](#token) 列表。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioDoc, AudioSource
+> from asr_data.annotation import Speaker, Transcription
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+> audio = source.load()
+> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+> speaker = timeline.reference.add_speaker(
+>     0,
+>     timeline.duration_ms,
+>     Speaker(
+>         "agent",
+>         transcription=Transcription("甚至出现交易几乎停滞的情况"),
+>     ),
+> )
+> print(speaker.payload.name, speaker.payload.transcription.text)
+> ```
+
+| Name         | Description                                      |
+| ------------ | ------------------------------------------------ |
+| `start_ms`   | 起始时间。~~int~~                                |
+| `end_ms`     | 结束时间。~~int~~                                |
+| `speaker`    | 说话人 payload。~~Speaker~~                      |
+| `confidence` | 可选 annotation 级置信度。~~Optional[float]~~    |
+| `status`     | 标注状态，默认为 `"final"`。~~AnnotationStatus~~ |
+| **RETURNS**  | Speaker annotation 句柄。~~Annotation~~          |
+
+带时间范围的 token 必须完全位于 speaker annotation 的范围内。
+
+## ReferenceAnnotations.transcript {id="reference-transcript",tag="method"}
+
+按开始时间组合最终状态的 Transcription、Speaker 内的 Transcription，以及从 Rust
+或历史数据读取到的 Sentence。Python 目前不提供 Sentence 的创建方法。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioDoc, AudioSource
+> from asr_data.annotation import Transcription
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+> audio = source.load()
+> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+> timeline.reference.add_transcription(
+>     0,
+>     timeline.duration_ms,
+>     Transcription("甚至出现交易几乎停滞的情况", language="zh"),
+> )
+>
+> result = timeline.reference.transcript()
+> print(result.text)
+> print(result.language)
+> ```
+
+| Name        | Description                  |
+| ----------- | ---------------------------- |
+| **RETURNS** | 组合后的转写。~~Transcript~~ |
+
+`reference.annotations` 返回全部标注，`len(reference)` 返回标注数量。
+
+## PredictionAnnotations {id="prediction-annotations",tag="class"}
+
+模型或处理流程输出的集合。每次添加都必须通过 keyword-only 参数提供非空字符串
+`source`。
+
+## PredictionAnnotations.add_speech {id="prediction-add-speech",tag="method"}
+
+添加带来源的语音活动预测。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioDoc, AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+> audio = source.load()
+> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+>
+> speech = timeline.prediction.add_speech(
+>     0,
+>     timeline.duration_ms,
+>     source="vad-v2",
+> )
+> print(speech.source, speech.kind)
+> ```
+
+| Name           | Description                                   |
+| -------------- | --------------------------------------------- |
+| `start_ms`     | 起始时间。~~int~~                             |
+| `end_ms`       | 结束时间。~~int~~                             |
+| _keyword-only_ |                                               |
+| `source`       | 产生结果的模型或流程。~~str~~                 |
+| `confidence`   | 可选 annotation 级置信度。~~Optional[float]~~ |
+| **RETURNS**    | Speech annotation 句柄。~~Annotation~~        |
+
+## PredictionAnnotations.add_transcription {id="prediction-add-transcription",tag="method"}
+
+添加带来源的完整转写预测。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioDoc, AudioSource
+> from asr_data.annotation import Transcription
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+> audio = source.load()
+> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+>
+> annotation = timeline.prediction.add_transcription(
+>     0,
+>     timeline.duration_ms,
+>     Transcription("甚至出现交易几乎停滞的情况", language="zh"),
+>     source="whisper-large",
+> )
+> print(annotation.source, annotation.payload.text)
+> ```
+
+| Name            | Description                                      |
+| --------------- | ------------------------------------------------ |
+| `start_ms`      | 起始时间。~~int~~                                |
+| `end_ms`        | 结束时间。~~int~~                                |
+| `transcription` | 完整转写 payload。~~Transcription~~              |
+| _keyword-only_  |                                                  |
+| `source`        | 产生结果的模型或流程。~~str~~                    |
+| `confidence`    | 可选 annotation 级置信度。~~Optional[float]~~    |
+| `status`        | 标注状态，默认为 `"final"`。~~AnnotationStatus~~ |
+| **RETURNS**     | Transcription annotation 句柄。~~Annotation~~    |
+
+## PredictionAnnotations.add_speaker {id="prediction-add-speaker",tag="method"}
+
+添加带来源的说话人发话预测。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioDoc, AudioSource
+> from asr_data.annotation import Speaker, Transcription
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+> audio = source.load()
+> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+> transcription = Transcription("甚至出现交易几乎停滞的情况", language="zh")
+>
+> annotation = timeline.prediction.add_speaker(
+>     0,
+>     timeline.duration_ms,
+>     Speaker("agent", transcription=transcription),
+>     source="diarization-v2",
+> )
+> print(annotation.payload.name, annotation.payload.transcription.text)
+> ```
+
+| Name           | Description                                      |
+| -------------- | ------------------------------------------------ |
+| `start_ms`     | 起始时间。~~int~~                                |
+| `end_ms`       | 结束时间。~~int~~                                |
+| `speaker`      | 说话人 payload。~~Speaker~~                      |
+| _keyword-only_ |                                                  |
+| `source`       | 产生结果的模型或流程。~~str~~                    |
+| `confidence`   | 可选 annotation 级置信度。~~Optional[float]~~    |
+| `status`       | 标注状态，默认为 `"final"`。~~AnnotationStatus~~ |
+| **RETURNS**    | Speaker annotation 句柄。~~Annotation~~          |
+
+## PredictionAnnotations.by_source {id="prediction-by-source",tag="method"}
+
+查询指定来源的全部 prediction annotation。
+
+| Name        | Description                          |
+| ----------- | ------------------------------------ |
+| `source`    | 来源名称。~~str~~                    |
+| **RETURNS** | 匹配的标注列表。~~List[Annotation]~~ |
+
+## PredictionAnnotations.transcript {id="prediction-transcript",tag="method"}
+
+组合指定来源的最终转写。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioDoc, AudioSource
+> from asr_data.annotation import Transcription
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+> audio = source.load()
+> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+> timeline.prediction.add_transcription(
+>     0,
+>     timeline.duration_ms,
+>     Transcription("甚至出现交易几乎停滞的情况", language="zh"),
+>     source="whisper-large",
+> )
+>
+> result = timeline.prediction.transcript("whisper-large")
+> print(result.text)
+> ```
+
+| Name        | Description                  |
+| ----------- | ---------------------------- |
+| `source`    | 来源名称。~~str~~            |
+| **RETURNS** | 组合后的转写。~~Transcript~~ |
+
+## PredictionAnnotations.remove_by_source {id="prediction-remove-source",tag="method"}
+
+删除指定来源的全部预测。
+
+| Name        | Description             |
+| ----------- | ----------------------- |
+| `source`    | 要删除的来源。~~str~~   |
+| **RETURNS** | 删除的标注数量。~~int~~ |
+
+## PredictionAnnotations.relabel_source {id="prediction-relabel-source",tag="method"}
+
+批量重命名 prediction 来源。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioDoc, AudioSource
+> from asr_data.annotation import Transcription
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+> audio = source.load()
+> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+> timeline.prediction.add_transcription(
+>     0,
+>     timeline.duration_ms,
+>     Transcription("甚至出现交易几乎停滞的情况"),
+>     source="whisper-raw",
+> )
+>
+> changed = timeline.prediction.relabel_source(
+>     "whisper-raw",
+>     "whisper-large-v2",
+> )
+> print(changed, timeline.prediction.sources)
+> ```
+
+| Name          | Description             |
+| ------------- | ----------------------- |
+| `from_source` | 原来源名称。~~str~~     |
+| `to_source`   | 新来源名称。~~str~~     |
+| **RETURNS**   | 修改的标注数量。~~int~~ |
+
+`prediction.annotations` 返回全部预测，`prediction.sources` 返回排序、去重后的来
+源， `len(prediction)` 返回标注数量。
+
+## Token {id="token",tag="class"}
+
+转写中的细粒度文本单元。
+
+`Token`、[`Transcription`](#transcription) 和 [`Speaker`](#speaker) 统一从
+`asr_data.annotation` 模块导入。
+
+> #### Example
+>
+> ```python
+> from asr_data.annotation import Token
+>
+> token = Token(
+>     "甚至出现",
+>     start_ms=0,
+>     end_ms=500,
+>     confidence=0.95,
+> )
+> print(token.text, token.start_ms, token.end_ms)
+> ```
+
+| Name           | Description                              |
+| -------------- | ---------------------------------------- |
+| `text`         | Token 文本。~~str~~                      |
+| _keyword-only_ |                                          |
+| `start_ms`     | 可选起始时间。~~Optional[int]~~          |
+| `end_ms`       | 可选结束时间。~~Optional[int]~~          |
+| `confidence`   | 可选 token 级置信度。~~Optional[float]~~ |
+
+`start_ms` 和 `end_ms` 必须同时提供或同时省略，属性只读。
+
+## Transcription {id="transcription",tag="class"}
+
+完整转写 payload，包含文本、[`Token`](#token) 列表、语言和置信度。
+
+> #### Example
+>
+> ```python
+> from asr_data.annotation import Token, Transcription
+>
+> transcription = Transcription(
+>     "甚至出现交易几乎停滞的情况",
+>     tokens=[Token("甚至出现"), Token("交易几乎停滞的情况")],
+>     language="zh",
+>     confidence=0.93,
+> )
+> print(transcription.text, transcription.language)
+> ```
+
+| Name           | Description                                      |
+| -------------- | ------------------------------------------------ |
+| `text`         | 完整转写文本。~~str~~                            |
+| _keyword-only_ |                                                  |
+| `tokens`       | Token 列表，默认为空。~~Optional[List[Token]]~~  |
+| `language`     | 可选语言标签。~~Optional[str]~~                  |
+| `confidence`   | 可选 transcription 级置信度。~~Optional[float]~~ |
+
+添加到 [`Timeline`](#timeline) 时，带时间范围的 token 必须完全位于所属
+[`Annotation`](#annotation) 范围内。
+
+## Speaker {id="speaker",tag="class"}
+
+一次说话人发话的 payload，由名称和可选 [`Transcription`](#transcription) 组成。
+
+> #### Example
+>
+> ```python
+> from asr_data.annotation import Speaker, Transcription
+>
+> speaker = Speaker(
+>     "agent",
+>     transcription=Transcription(
+>         "甚至出现交易几乎停滞的情况",
+>         language="zh",
+>     ),
+> )
+> print(speaker.name, speaker.transcription.text)
+> ```
+
+| Name            | Description                                     |
+| --------------- | ----------------------------------------------- |
+| `name`          | 说话人名称或稳定业务标识。~~str~~               |
+| _keyword-only_  |                                                 |
+| `transcription` | 该次发话的完整转写。~~Optional[Transcription]~~ |
+
+`Speaker` 属性只读。添加后如需修改内容，应整体替换返回的
+[`Annotation`](#annotation) 句柄的 `payload`。
+
+## Transcript {id="transcript",tag="class"}
+
+由 [`Annotation`](#annotation) 集合生成的组合转写结果。
+
+| Name       | Description                         |
+| ---------- | ----------------------------------- |
+| `text`     | 按时间顺序组合的文本。~~str~~       |
+| `language` | 首个可用语言标签。~~Optional[str]~~ |
+
+## Annotation {id="annotation",tag="class"}
+
+[`Timeline`](#timeline) 中的一条带时间范围记录。`add_*()` 返回的不是快照，而是关
+联到 timeline 的活动句柄。
+
+## Annotation properties {id="annotation-properties",tag="properties"}
+
+| Name         | Description                                                     |
+| ------------ | --------------------------------------------------------------- |
+| `id`         | 自动生成的 annotation ID。~~str~~                               |
+| `start_ms`   | 起始时间。~~int~~                                               |
+| `end_ms`     | 结束时间。~~int~~                                               |
+| `status`     | 当前状态。~~AnnotationStatus~~                                  |
+| `kind`       | Payload 类型。~~AnnotationKind~~                                |
+| `confidence` | Annotation 级置信度。~~Optional[float]~~                        |
+| `source`     | Prediction 来源；reference 为 `None`。~~Optional[str]~~         |
+| `payload`    | 实际标注内容；Speech 为 `None`。~~Optional[AnnotationPayload]~~ |
+
+## Annotation.payload {id="annotation-payload-property",tag="property"}
+
+获取或整体替换标注内容。新 payload 的类型必须与当前 `kind` 一致；Speech 的
+payload 固定为 `None`。替换 Transcription 或 Speaker 时会重新校验 token 时间范围
+。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioDoc, AudioSource
+> from asr_data.annotation import Speaker
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> doc = AudioDoc(AudioSource.from_url(URL))
+> timeline = doc.ensure_timeline("mono", duration_ms=4_204)
+> annotation = timeline.reference.add_speaker(
+>     0, timeline.duration_ms, Speaker("agent")
+> )
+>
+> print(annotation.payload.name)
+> annotation.payload = Speaker("reviewed-agent")
+> print(annotation.payload.name)
+> ```
+
+| Name        | Description                                                       |
+| ----------- | ----------------------------------------------------------------- |
+| **RETURNS** | 当前 payload；Speech 返回 `None`。~~Optional[AnnotationPayload]~~ |
+
+## AudioDB {id="audio-db",tag="class"}
+
+将 [`AudioDoc`](#audio-doc) 保存到带 application ID 和 schema version 的 SQLite
+数据库。
+
+## AudioDB.\_\_init\_\_ {id="audio-db-init",tag="method"}
+
+打开或创建数据库。
+
+> #### Example
+>
+> ```python
+> from pathlib import Path
+> from tempfile import TemporaryDirectory
+>
+> from asr_data import AudioDB
+>
+> with TemporaryDirectory() as directory:
+>     path = Path(directory) / "dataset.db"
+>     db = AudioDB(str(path))
+>     readonly = AudioDB(str(path), read_only=True)
+>     print(len(db), len(readonly))
+> ```
+
+| Name        | Description                            |
+| ----------- | -------------------------------------- |
+| `path`      | 数据库文件路径。~~str~~                |
+| `read_only` | 是否只读打开，默认为 `False`。~~bool~~ |
+
+## AudioDB.insert {id="audio-db-insert",tag="method"}
+
+插入新记录；ID 重复时抛出 `AsrDataError`。
+
+| Name        | Description                |
+| ----------- | -------------------------- |
+| `audio`     | 要插入的记录。~~AudioDoc~~ |
+| **RETURNS** | 无返回值。~~None~~         |
+
+## AudioDB.query {id="audio-db-query",tag="method"}
+
+按 ID 游标、时长和元数据筛选记录。
+
+> #### Example
+>
+> ```python
+> from pathlib import Path
+> from tempfile import TemporaryDirectory
+>
+> from asr_data import AudioDB, AudioDoc, AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+>
+> with TemporaryDirectory() as directory:
+>     path = Path(directory) / "dataset.db"
+>     db = AudioDB(str(path))
+>     doc = AudioDoc(AudioSource.from_url(URL), id="call-001")
+>     doc.metadata["split"] = "train"
+>     db.insert(doc)
+>
+>     page = db.query(limit=100, metadata={"split": "train"})
+>     print([item.id for item in page])
+> ```
+
+| Name              | Description                                          |
+| ----------------- | ---------------------------------------------------- |
+| `limit`           | 最大返回数，默认为 `100`，上限 `10_000`。~~int~~     |
+| _keyword-only_    |                                                      |
+| `after`           | 上一页最后一条 audio ID。~~Optional[str]~~           |
+| `min_duration_ms` | 可选最短时长。~~Optional[int]~~                      |
+| `max_duration_ms` | 可选最长时长。~~Optional[int]~~                      |
+| `metadata`        | 精确匹配的 JSON 元数据。~~Optional[Dict[str, Any]]~~ |
+| **RETURNS**       | 按 audio ID 排序的记录。~~List[AudioDoc]~~           |
+
+## AudioDB.update {id="audio-db-update",tag="method"}
+
+更新已有记录；仅在内容发生变化时写入。
+
+| Name        | Description                |
+| ----------- | -------------------------- |
+| `audio`     | 新的完整记录。~~AudioDoc~~ |
+| **RETURNS** | 是否发生更新。~~bool~~     |
+
+## AudioDB.update_many {id="audio-db-update-many",tag="method"}
+
+在一个事务中批量更新记录。
+
+| Name        | Description                      |
+| ----------- | -------------------------------- |
+| `audios`    | 要更新的记录。~~List[AudioDoc]~~ |
+| **RETURNS** | 发生更新的记录数。~~int~~        |
+
+## AudioDB.delete {id="audio-db-delete",tag="method"}
+
+按 audio ID 删除记录。
+
+| Name        | Description                  |
+| ----------- | ---------------------------- |
+| `audio_id`  | 要删除的记录 ID。~~str~~     |
+| **RETURNS** | 是否存在并成功删除。~~bool~~ |
+
+## AudioDB mapping protocol {id="audio-db-protocol",tag="methods"}
+
+数据库支持 Python 映射式访问。
+
+> #### Example
+>
+> ```python
+> from pathlib import Path
+> from tempfile import TemporaryDirectory
+>
+> from asr_data import AudioDB, AudioDoc, AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+>
+> with TemporaryDirectory() as directory:
+>     path = Path(directory) / "dataset.db"
+>     db = AudioDB(str(path))
+>     db.insert(AudioDoc(AudioSource.from_url(URL), id="call-001"))
+>
+>     loaded = db["call-001"]
+>     print(loaded.id, "call-001" in db, len(db))
+>     print([doc.id for doc in db])
+> ```
+
+| API              | Description                            |
+| ---------------- | -------------------------------------- |
+| `db[audio_id]`   | 按 ID 获取记录。~~AudioDoc~~           |
+| `audio_id in db` | 检查 ID 是否存在。~~bool~~             |
+| `len(db)`        | 数据库记录数。~~int~~                  |
+| `iter(db)`       | 懒加载全部记录。~~Iterator[AudioDoc]~~ |
+
+## AudioDB metadata {id="audio-db-metadata",tag="methods"}
+
+维护数据库级 JSON 元数据。
+
+| API                        | Description                          |
+| -------------------------- | ------------------------------------ |
+| `metadata`                 | 全部数据库元数据。~~Dict[str, Any]~~ |
+| `set_metadata(key, value)` | 设置值。~~None~~                     |
+| `metadata_value(key)`      | 读取值。~~Optional[Any]~~            |
+| `delete_metadata(key)`     | 删除值并返回是否存在。~~bool~~       |
+
+## AnnotationStatus {id="annotation-status",tag="type alias"}
+
+描述 annotation 当前所处的生命周期状态。
+
+| Value       | Description                |
+| ----------- | -------------------------- |
+| `"partial"` | 尚未稳定的中间结果。       |
+| `"final"`   | 最终结果，会参与组合转写。 |
+| `"revised"` | 已修订的结果。             |
+| `"deleted"` | 逻辑删除的结果。           |
+
+## AnnotationKind {id="annotation-kind",tag="type alias"}
+
+描述 annotation payload 的类型。
+
+| Value              | Description      |
+| ------------------ | ---------------- |
+| `"speech"`         | 语音活动范围。   |
+| `"token"`          | 细粒度文本单元。 |
+| `"transcription"`  | 完整转写。       |
+| `"sentence"`       | 句子级文本片段。 |
+| `"speaker"`        | 说话人发话。     |
+| `"language"`       | 语言信息。       |
+| `"acoustic_event"` | 非语音声学事件。 |
+
+`AnnotationSourceKind` 和 silence kind 已删除。
+
+Python 公开的添加方法只创建 `speech`、`transcription` 和 `speaker`。`token` 嵌套
+在 [`Transcription`](#transcription) 中；`sentence`、`language` 和
+`acoustic_event` 可能出现在从 Rust 或历史数据读取的记录中，但没有对应的 Python
+`add_*` 方法。
+
+## AnnotationPayload {id="annotation-payload-alias",tag="type alias"}
+
+`Annotation.payload` 的返回类型。Python 公开的主要 payload 类型统一位于
+`asr_data.annotation` 模块。
 
 ```python
-Audio.from_file(path: str, id: str | None = None) -> Audio
-Audio.from_url(url: str, id: str | None = None) -> Audio
-Audio.from_bytes(data: bytes, id: str | None = None) -> Audio
-Audio.from_pcm(
-    data: bytes,
-    sample_rate: int,
-    channels: int = 1,
-    id: str | None = None,
-) -> Audio
+AnnotationPayload = Speaker | Token | Transcription | dict[str, object] | None
 ```
 
-属性：`id`、`duration_ms`、`timelines`、`metadata`。
+`Speech` 的 payload 为 `None`。`Sentence`、`Language` 和 `AcousticEvent` 暂无
+Python payload 类，从数据库或 Rust 数据读取时以字典形式返回。
 
-```python
-audio.timeline(channel: str | int) -> Timeline | None
-audio.ensure_timeline(channel: str | int) -> Timeline
-audio.remove_timeline(channel: str | int) -> bool
-audio.load() -> Waveform
-await audio.aload() -> Waveform
-audio.validate() -> None
-```
+## AsrDataError {id="asr-data-error",tag="exception"}
 
-## Waveform {id="waveform"}
+`asr-data` 数据校验、音频处理和数据库操作使用的公共异常类型。
 
-```python
-Waveform(samples, sample_rate: int, channels: int = 1)
-```
+> #### Example
+>
+> ```python
+> from asr_data import AsrDataError, AudioDoc, AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> doc = AudioDoc(AudioSource.from_url(URL))
+>
+> try:
+>     doc.ensure_timeline("mono")
+> except AsrDataError as error:
+>     print(error)
+> ```
 
-只读属性：`sample_rate`、`channels`、`is_normalized`、`frame_count`、
-`duration_ms`、`source_format`。
-
-```python
-waveform.numpy()
-waveform.display(autoplay: bool = False) -> None
-waveform.to_mono() -> Waveform
-waveform.channel(index: int) -> Waveform
-waveform.resample(sample_rate: int) -> Waveform
-waveform.normalize() -> Waveform
-waveform.slice_ms(start_ms: int, end_ms: int) -> Waveform
-```
-
-## Timeline {id="timeline"}
-
-属性：`id`、`audio_id`、`duration_ms`、`annotations`。
-
-```python
-timeline.add_speech(start_ms, end_ms, source="vad", confidence=None,
-                    source_kind="stage") -> Annotation
-timeline.add_silence(start_ms, end_ms, source="vad", confidence=None,
-                     source_kind="stage") -> Annotation
-timeline.add_transcription(start_ms, end_ms, text, source="asr",
-                           language=None, confidence=None, status="final",
-                           source_kind="stage") -> Annotation
-timeline.add_speaker(start_ms, end_ms, speaker, source="diarization",
-                     confidence=None, status="final",
-                     source_kind="stage") -> Annotation
-timeline.annotations_by_source(source, source_kind="model") -> list[Annotation]
-timeline.transcript_by_source(source, source_kind="model") -> Transcript
-timeline.remove_annotations_by_source(source, source_kind="model") -> int
-timeline.relabel_annotations_source(from_source, to_source,
-                                    from_source_kind="stage",
-                                    to_source_kind="model") -> int
-timeline.transcript() -> Transcript
-```
-
-## Annotation {id="annotation"}
-
-只读属性：`id`、`start_ms`、`end_ms`、`status`、`kind`、`text`、
-`confidence`、`source_kind`、`source`、`speaker`、`language`。
-
-`Transcript` 提供 `text` 和 `language` 属性。
-
-`AudioFormat` 提供 `encoding`、`sample_rate` 和 `channels` 属性。
-
-## AudioDB {id="audiodb"}
-
-```python
-AudioDB(path: str, read_only: bool = False)
-
-db.insert(audio: Audio) -> None
-db.query(limit=100, *, after=None, min_duration_ms=None,
-         max_duration_ms=None, metadata=None) -> list[Audio]
-db.update(audio: Audio) -> bool
-db.update_many(audios: list[Audio]) -> int
-db.delete(audio_id: str) -> bool
-db.set_metadata(key: str, value) -> None
-db.metadata_value(key: str)
-db.delete_metadata(key: str) -> bool
-```
-
-此外支持 `db[audio_id]`、`audio_id in db`、`len(db)`、迭代以及只读属性
-`db.metadata`。
-
-## 类型别名 {id="types"}
-
-```python
-AnnotationStatus = Literal["partial", "final", "revised", "deleted"]
-AnnotationSourceKind = Literal["user", "model", "stage", "system"]
-AnnotationKind = Literal[
-    "speech", "silence", "token", "transcription", "sentence",
-    "speaker", "language", "hotword", "acoustic_event", "diagnostic",
-]
-```
-
-底层错误统一以 `AsrDataError` 暴露；按 ID 读取不存在的记录时使用 Python
-标准 `KeyError`。
+按 ID 读取不存在的数据库记录时使用 Python 标准 `KeyError`。

@@ -5,10 +5,10 @@
             {
                 "label": "开始使用",
                 "items": [
-                    { "text": "概览与安装", "url": "/asr-data" },
-                    { "text": "音频与波形", "url": "/asr-data/audio" },
-                    { "text": "时间轴与标注", "url": "/asr-data/annotations" },
-                    { "text": "SQLite 数据库", "url": "/asr-data/database" }
+                    { "text": "概览", "url": "/asr-data" },
+                    { "text": "音频", "url": "/asr-data/audio" },
+                    { "text": "标注", "url": "/asr-data/annotations" },
+                    { "text": "数据库", "url": "/asr-data/database" }
                 ]
             },
             {

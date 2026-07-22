@@ -1,108 +1,147 @@
 ---
-title: SQLite 数据库
-teaser: 持久化、查询和批量维护 Audio 数据
+title: 数据库
+teaser: 持久化、查询和批量维护 AudioDoc 数据
 section: asr-data
 menu:
   - ['打开数据库', 'open']
   - ['增删改查', 'crud']
-  - ['筛选和分页', 'query']
   - ['数据库元数据', 'metadata']
   - ['只读模式', 'readonly']
 ---
 
-`AudioDB` 将音频来源、时间轴、标注和业务元数据保存在一个 SQLite 文件中。
-推荐使用 `.sqlite` 后缀。
+[`AudioDB`](/asr-data/api#audio-db) 使用一个 SQLite 文件持久化
+[`AudioDoc`](/asr-data/api#audio-doc)。数据库保存音频来源、timeline、annotation
+和业务元数据，不复制解码后的浮点样本。
+
+右侧 Example 按页面顺序连续执行，后面的示例会直接使用前面创建的数据库和文档。
 
 ## 打开数据库 {id="open"}
 
-```python
-from asr_data import AudioDB
+创建 [`AudioDB`](/asr-data/api#audio-db) 时只需要数据库路径；文件不存在会自动创
+建，存在时会检查它是否是受支持的 asr-data 数据库。
 
-db = AudioDB("dataset.sqlite")
-```
+> #### Example
+>
+> ```python
+> from tempfile import TemporaryDirectory
+>
+> from asr_data import AudioDB
+>
+> directory = TemporaryDirectory()
+> path = f"{directory.name}/dataset.db"
+> db = AudioDB(path)
+> ```
 
-不存在的文件会自动创建。数据库带有专用的 SQLite application ID 和 schema
-version，打开时会校验文件格式。
+推荐使用 `.db` 后缀，以便工具和使用者识别文件类型。数据库包含专用 SQLite
+application ID 和 schema version；打开普通 SQLite 文件或不兼容版本时会立即报错，
+而不是尝试按错误结构读写。
+
+一个数据库可以包含大量 [`AudioDoc`](/asr-data/api#audio-doc)，但每个文档 ID 必须
+唯一。路径只决定数据库文件位置，不会改变
+[`AudioSource`](/asr-data/api#audio-source) 中保存的本地路径或 URL。
 
 ## 增删改查 {id="crud"}
 
+[`AudioDB`](/asr-data/api#audio-db) 同时提供显式方法和类似字典的读取协议。插入、
+更新和删除都以 [`AudioDoc`](/asr-data/api#audio-doc) ID 为记录主键。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioDoc, AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> doc = AudioDoc(AudioSource.from_url(URL), id="call-001")
+> doc.metadata["split"] = "train"
+>
+> # 增
+> db.insert(doc)
+> # 查
+> loaded = db["call-001"]
+> print(loaded.id, loaded.metadata)
+> # 改
+> loaded.metadata["checked"] = True
+> changed = db.update(loaded)
+> # 删
+> deleted = db.delete("call-001")
+>
+> print(changed, deleted)
+> db.insert(loaded)  # 供后续示例继续使用
+> ```
+
+| 操作                | 行为                                           |
+| ------------------- | ---------------------------------------------- |
+| `insert(doc)`       | 新增文档；ID 已存在时返回错误                  |
+| `db[audio_id]`      | 按 ID 读取；不存在时抛出 `KeyError`            |
+| `update(doc)`       | 只写入发生变化的部分；没有变化时返回 `False`   |
+| `update_many(docs)` | 在单个 SQLite 事务中批量更新，返回实际更新数量 |
+| `delete(audio_id)`  | 删除指定文档，返回是否确实删除                 |
+| `audio_id in db`    | 判断 ID 是否存在                               |
+| `len(db)`           | 返回文档数量                                   |
+| `for doc in db`     | 通过内部游标懒加载全部文档                     |
+
+`update()` 不执行隐式插入：目标 ID 必须已经存在。批量更新使用一个事务，任一写入
+失败时不会留下只更新了一部分的数据。
+
+### 查询与分页 {id="query"}
+
+`query()` 可以同时按 metadata、最短时长和最长时长筛选，并使用稳定的 AudioDoc ID
+游标分页。
+
+> #### Example
+>
+> ```python
+> page = db.query(
+>     limit=10,
+>     metadata={"split": "train"},
+> )
+> print([item.id for item in page])
+> ```
+
+查询结果按 `audio_id` 排序。读取下一页时，将上一页最后一条记录的 ID 传给
+`after`：
+
 ```python
-# 新增；ID 已存在时会报错
-db.insert(audio)
-
-# 按 ID 获取；不存在时抛出 KeyError
-loaded = db["call-001"]
-
-# 判断和计数
-if "call-001" in db:
-    print(len(db))
-
-# 更新已存在的记录
-loaded.metadata["checked"] = True
-changed = db.update(loaded)
-
-# 删除
-deleted = db.delete("call-001")
+next_page = db.query(limit=10, after=page[-1].id)
 ```
 
-`update()` 只写入发生变化的部分；没有变化时返回 `False`。批量更新使用单个
-SQLite 事务：
-
-```python
-updated_count = db.update_many(audios)
-```
-
-直接迭代数据库会通过内部游标懒加载记录：
-
-```python
-for audio in db:
-    print(audio.id)
-```
-
-## 筛选和分页 {id="query"}
-
-查询结果按 `audio_id` 排序。使用上一页最后一条记录的 ID 作为 `after` 游标：
-
-```python
-first_page = db.query(
-    limit=100,
-    metadata={"split": "train"},
-    min_duration_ms=1_000,
-    max_duration_ms=30_000,
-)
-
-second_page = db.query(
-    limit=100,
-    after=first_page[-1].id,
-    metadata={"split": "train"},
-    min_duration_ms=1_000,
-    max_duration_ms=30_000,
-)
-```
-
-元数据过滤要求存储值与查询值匹配，适合数据集切分、语言、来源等结构化字段。
+`after` 是游标而不是数字页码，因此即使数据库较大，也不需要跳过前面所有记录。
+metadata 过滤要求存储值与查询值匹配，适合数据集 split、语言、来源和审核状态等结
+构化字段。
 
 ## 数据库元数据 {id="metadata"}
 
-数据库级元数据不属于单条音频，适合记录数据集版本、标注运行和模型配置：
+数据库级 metadata 描述整个数据集，不属于任何一条 AudioDoc，适合保存数据集版本、
+标注批次或模型配置。
 
-```python
-db.set_metadata(
-    "annotation_runs",
-    {"qwen3-asr": {"language": "zh", "version": "1"}},
-)
+> #### Example
+>
+> ```python
+> db.set_metadata("dataset_version", "2026-07")
+> print(db.metadata_value("dataset_version"))
+> print(db.metadata)
+> ```
 
-run = db.metadata_value("annotation_runs")
-all_metadata = db.metadata
-db.delete_metadata("annotation_runs")
-```
+`set_metadata(key, value)` 新增或覆盖一个值，`metadata_value(key)` 查询单个值，
+`delete_metadata(key)` 删除并返回是否存在。`db.metadata` 返回当前全部数据库级元
+数据。
+
+业务上只属于单条音频的信息应放在 `doc.metadata`；只有需要对整个数据库共享的信息
+才应放在 `db.metadata`，这样查询和迁移时两者的作用域保持清晰。
 
 ## 只读模式 {id="readonly"}
 
-处理不应修改的评测集或生产快照时，以只读模式打开：
+评测集、发布快照或其他不应被修改的数据库，可以使用 `read_only=True` 打开。
 
-```python
-db = AudioDB("evaluation.sqlite", read_only=True)
-```
+> #### Example
+>
+> ```python
+> read_only = AudioDB(path, read_only=True)
+> print(read_only["call-001"].id)
+> ```
 
-只读模式要求数据库文件已经存在并且格式有效。
+只读模式要求文件已经存在且格式有效，读取、查询和迭代仍然可用；插入、更新、删除以
+及数据库 metadata 写操作会失败。只读连接不会自动创建缺失文件。
+
+需要删除记录时，应使用可写连接调用 `db.delete(audio_id)`。临时示例中的目录会在
+Python 进程结束时自动清理；生产数据库应使用稳定的绝对路径并纳入备份策略。

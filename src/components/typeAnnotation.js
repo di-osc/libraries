@@ -8,9 +8,11 @@ export const WRAP_THRESHOLD = 30
 
 const specialCharacterList = ['[', ']', ',', ', ']
 
-const highlight = (element) =>
+const highlight = (element, key) =>
     specialCharacterList.includes(element) ? (
-        <span className={classes['cli-arg-subtle']}>{element}</span>
+        <span className={classes['cli-arg-subtle']} key={key}>
+            {element}
+        </span>
     ) : (
         element
     )
@@ -26,7 +28,7 @@ function linkType(el, showLink = true, key) {
             {elStr}
         </Link>
     ) : (
-        highlight(el)
+        highlight(el, key)
     )
 }
 

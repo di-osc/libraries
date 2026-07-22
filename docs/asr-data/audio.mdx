@@ -1,106 +1,145 @@
 ---
-title: 音频与波形
-teaser: 创建 Audio、加载 Waveform，并处理采样率和声道
+title: 音频
+teaser: 创建音频来源，加载、处理和流式读取音频
 section: asr-data
 menu:
-  - ['创建音频', 'create']
-  - ['加载波形', 'load']
-  - ['波形处理', 'processing']
-  - ['多声道', 'channels']
+  - ['音频来源', 'source']
+  - ['加载音频', 'load']
+  - ['音频处理', 'processing']
+  - ['流式加载', 'streaming']
 ---
 
-## 创建音频 {id="create"}
+音频处理从 [`AudioSource`](/asr-data/api#audio-source) 开始。它描述数据来自哪里
+；解码后得到完整的 [`Audio`](/asr-data/api#audio)，流式读取则持续产生
+[`AudioChunk`](/asr-data/api#audio-chunk)。来源、完整音频和流式分块使用相同的样
+本约定，因此可以复用后续处理代码。
 
-`Audio` 支持文件、URL、编码后的字节以及 PCM S16LE 字节：
+右侧 Example 按页面顺序连续执行，后面的示例会直接使用前面创建的变量。
 
-```python
-from asr_data import Audio
+## 音频来源 {id="source"}
 
-from_file = Audio.from_file("audio.wav", id="file-001")
-from_url = Audio.from_url("https://example.com/audio.wav", id="url-001")
+`AudioSource` 是一个尚未解码的音频来源描述，而不是音频样本本身。创建来源时通常不
+读取文件、不发起网络请求，也不执行解码；真正的 I/O 发生在 `load()`、`aload()`、
+`stream()` 或 `astream()` 被调用时。
 
-with open("audio.wav", "rb") as file:
-    from_bytes = Audio.from_bytes(file.read(), id="bytes-001")
+> #### Example
+>
+> ```python
+> from asr_data import AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+>
+> print(source.kind, source.url)
+> ```
 
-from_pcm = Audio.from_pcm(
-    b"\0\0" * 16_000,
-    sample_rate=16_000,
-    channels=1,
-    id="pcm-001",
-)
-```
+将“来源”和“解码结果”分开有三个目的：
 
-未传入 `id` 时，库会自动创建唯一 ID。业务系统通常应显式提供稳定 ID，方便数据库
-更新、分页和跨系统关联。
+- **延迟读取**：可以先组织任务，真正需要样本时再下载和解码。
+- **统一入口**：文件、URL、内存字节和实时 PCM 最终都使用相同的加载与流式接口。
+- **保留来源信息**：来源可以随业务数据传递，不需要长期保存体积更大的浮点样本。
 
-## 加载波形 {id="load"}
+支持五种来源：
 
-同步加载返回 `Waveform`：
+| 创建方法        | 输入内容                 | 典型用途                         |
+| --------------- | ------------------------ | -------------------------------- |
+| `from_path()`   | 本地文件路径             | 本地数据集和缓存文件             |
+| `from_url()`    | HTTP 或 HTTPS 地址       | 对象存储、数据服务和远程样本     |
+| `from_bytes()`  | WAV、MP3 等编码音频字节  | 上传文件、消息体或内存缓存       |
+| `from_base64()` | 编码音频的 base64 字符串 | JSON、日志或文本协议             |
+| `from_pcm()`    | PCM S16LE 原始字节       | 麦克风、WebSocket 和实时音频设备 |
 
-```python
-waveform = from_file.load()
+`from_bytes()` 中的字节仍然带有 WAV、MP3 等容器或编码信息，解码器可以从内容识别
+音频格式。`from_pcm()` 没有文件头，因此必须显式提供 `sample_rate` 和
+`channels`；每个样本使用有符号 16 位小端整数。
 
-print(waveform.sample_rate)
-print(waveform.channels)
-print(waveform.frame_count)
-print(waveform.duration_ms)
-```
+## 加载音频 {id="load"}
 
-在异步程序中使用 `aload()`，URL 下载不会阻塞事件循环：
+调用 `source.load()` 会同步读取并解码完整来源，返回一个 `Audio`。异步程序使用
+`await source.aload()`；两者的参数和结果一致。
 
-```python
-waveform = await from_url.aload()
-```
+> #### Example
+>
+> ```python
+> audio = source.load(sample_rate=16_000, mono=True)
+>
+> print(audio.sample_rate, audio.channels)
+> print(audio.frame_count, audio.duration_ms)
+> print(audio.samples.dtype, audio.source_format)
+> ```
 
-`numpy()` 返回 `float32` NumPy 数组。创建 `Waveform` 时输入数组会被复制，后续修改
-原数组不会改变波形对象。
+加载时可以通过 `sample_rate` 直接重采样，通过 `mono=True` 将多声道混合为单声道。
+这适合 ASR 或 VAD 等要求固定输入格式的流程，可以避免先加载原格式、再单独转换的中
+间步骤。省略这两个参数时保留来源的采样率和声道数。
 
-```python
-samples = waveform.numpy()
-print(samples.dtype)
-```
+`Audio` 提供以下基础信息：
 
-## 波形处理 {id="processing"}
+| 属性            | 含义                                           |
+| --------------- | ---------------------------------------------- |
+| `samples`       | `float32` 样本；数值范围为 `[-1.0, 1.0]`       |
+| `sample_rate`   | 每秒每个声道的采样帧数                         |
+| `channels`      | 声道数                                         |
+| `frame_count`   | 每个声道的采样帧数                             |
+| `duration_ms`   | 根据帧数计算的时长，类型为 `float`             |
+| `source_format` | 解码前检测到的编码、采样率和声道等原始格式信息 |
 
-所有变换都会返回新的 `Waveform`：
+`duration_ms` 可能包含小数毫秒，这是采样帧数除以采样率的自然结果。只有创建
+timeline 或 annotation 时，才需要按相应 API 的规则转换为毫秒整数。
 
-```python
-normalized = waveform.normalize()
-resampled = normalized.resample(16_000)
-clip = resampled.slice_ms(1_000, 3_000)
-```
+## 音频处理 {id="processing"}
 
-常用方法：
+`Audio` 的转换方法不会原地修改已有对象，而是返回新的 `Audio`。这种设计可以保留原
+始解码结果，并安全地从同一份音频产生不同采样率、声道或时间范围的版本。
 
-| 方法 | 作用 |
-| --- | --- |
-| `normalize()` | 将波形归一化 |
-| `resample(sample_rate)` | 转换采样率 |
-| `slice_ms(start_ms, end_ms)` | 按毫秒截取波形 |
-| `to_mono()` | 将多声道波形混合为单声道 |
-| `channel(index)` | 提取指定声道 |
-| `display(autoplay=False)` | 在 IPython / Notebook 中播放 |
+> #### Example
+>
+> ```python
+> processed = audio.to_mono().resample(16_000)
+> clip = processed.slice_ms(0, 2_000)
+> parts = processed.split_at_low_energy(1_000)
+>
+> print("processed:", processed.sample_rate, processed.channels)
+> print("clip:", clip.duration_ms)
+> print("parts:", [part.duration_ms for part in parts])
+> ```
 
-## 多声道 {id="channels"}
+常用操作包括：
 
-波形的声道处理与标注时间轴是两套显式操作。提取左、右声道不会自动移动或合并标注：
+| 方法                                   | 作用                                      |
+| -------------------------------------- | ----------------------------------------- |
+| `resample(sample_rate)`                | 转换到目标采样率                          |
+| `to_mono()`                            | 将所有声道混合为单声道                    |
+| `channel(index)`                       | 提取一个声道，索引从 `0` 开始             |
+| `slice_ms(start_ms, end_ms)`           | 按毫秒截取左闭右开的时间范围              |
+| `split_at_low_energy(max_duration_ms)` | 将长音频优先拆在低能量位置                |
+| `display(...)`                         | 在 IPython 或 Notebook 中播放指定时间范围 |
 
-```python
-waveform = from_file.load()
-left_audio = waveform.channel(0)
-right_audio = waveform.channel(1)
+多声道样本按 frame 交错保存，`frame_count` 表示每个声道的帧数，而不是 `samples`
+数组的元素总数。`slice_ms()` 和低能量切分会保留声道布局；需要单声道时应显式调用
+`to_mono()`。
 
-from_file.ensure_timeline("left").add_transcription(0, 800, "客户说话")
-from_file.ensure_timeline("right").add_transcription(0, 900, "坐席说话")
-```
+## 流式加载 {id="streaming"}
 
-`timeline()` 只查询时间轴，不存在时返回 `None`；需要创建时使用
-`ensure_timeline()`。`"mono"` 时间轴始终存在。
+完整加载适合需要随机切片、全局分析或反复处理的音频；流式加载适合边接收边推理、控
+制单次处理粒度或尽快得到首个结果的场景。
 
-```python
-right = from_file.timeline("right")
-if right is None:
-    right = from_file.ensure_timeline("right")
+> #### Example
+>
+> ```python
+> for chunk in source.stream(500, sample_rate=16_000, mono=True):
+>     print(chunk.offset_ms, chunk.duration_ms, chunk.is_final)
+> ```
 
-from_file.remove_timeline("right")
-```
+`source.stream(chunk_size_ms=...)` 返回同步迭代器，`source.astream(...)` 返回异
+步迭代器。`chunk_size_ms` 是目标分块时长；最后一块可能更短。加载阶段同样可以指定
+`sample_rate` 和 `mono`，因此每个 chunk 到达时已经是下游需要的格式。
+
+每个 `AudioChunk` 包含：
+
+- `offset_ms`：本块相对整段音频起点的偏移。
+- `duration_ms`：本块的实际时长。
+- `is_final`：是否为该来源的最后一块。
+- `samples`、`sample_rate`、`channels` 和 `frame_count`：本块的音频数据与格式。
+
+`AudioChunk` 也支持 `to_mono()`、`channel()`、`resample()` 和 `slice_ms()`。同步
+迭代天然按消费速度拉取下一块；异步迭代则更适合网络服务和异步推理管线。

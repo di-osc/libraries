@@ -1,36 +1,23 @@
 ---
 title: asr-data
-teaser: 面向自动语音识别的数据模型、音频处理与 SQLite 存储库
+teaser: 统一管理 ASR 音频、标注与模型预测
+version: 0.1.1
 section: asr-data
 menu:
-  - ['功能概览', 'features']
   - ['安装', 'installation']
-  - ['快速开始', 'quickstart']
   - ['核心概念', 'concepts']
+  - ['快速开始', 'quickstart']
 ---
 
-`asr-data` 是一个面向 ASR（Automatic Speech Recognition，自动语音识别）
-数据管理的 Rust / Python 库。它把音频、转写、说话人、语言和模型预测组织成
-统一的数据模型，并通过 SQLite 文件持久化。
+`asr-data` 用于构建和管理 ASR 数据集，同时提供 Rust 和 Python API。它以
+[`AudioDoc`](/asr-data/api#audio-doc) 为中心，统一组织音频来源、按声道时间轴、参
+考标注与模型预测，并通过 SQLite 完成持久化和查询。
 
-项目源码位于 [di-osc/asr-data](https://github.com/di-osc/asr-data)。
-
-## 功能概览 {id="features"}
-
-- 使用 `Audio` 保存音频来源、元数据以及每个声道的时间轴。
-- 使用 `Timeline` 管理语音、静音、转写、说话人和语言等标注。
-- 使用 `Waveform` 解码、切片、拆分声道、混音、归一化和重采样。
-- 使用 `AudioDB` 将数据保存在可查询的 SQLite 数据库中。
-- 核心由 Rust 实现，并提供带类型提示的 Python API。
+源码：[di-osc/asr-data](https://github.com/di-osc/asr-data)
 
 ## 安装 {id="installation"}
 
 Python 版本要求为 3.10 或更高：
-
-> #### 安装提示
->
-> 如果需要从常见音频格式读取波形，请确保系统能够正常使用 FFmpeg。
-> 安装完成后，可以运行 `ffmpeg -version` 检查环境是否就绪。
 
 ```bash
 pip install asr-data
@@ -42,47 +29,94 @@ Rust 项目可以直接添加 crate：
 cargo add asr-data
 ```
 
+## 核心概念 {id="concepts"}
+
+下图展示了从音频来源、解码结果到文档标注和数据库持久化的完整关系：
+
+<Image
+  src="/asr-data/architecture-hd.png"
+  alt="asr-data 从 AudioSource 到 Audio、AudioChunk、AudioDoc、Timeline 与 Annotation 的数据模型关系图"
+  width="1000"
+/>
+
+- **音频来源**：[`AudioSource`](/asr-data/api#audio-source) 统一表达
+  Path、URL、Bytes、Base64 和 PCM。调用 `load()` / `aload()` 得到完整的
+  [`Audio`](/asr-data/api#audio)，调用 `stream()` / `astream()` 则持续产生
+  [`AudioChunk`](/asr-data/api#audio-chunk)。
+- **解码后的音频**：[`Audio`](/asr-data/api#audio) 保存浮点 `Samples` 和
+  `AudioFormat`；[`AudioChunk`](/asr-data/api#audio-chunk) 额外记录 `offset_ms`
+  与 `is_final`。两者都支持声道提取、重采样和切片。
+- **可持久化文档**：[`AudioDoc`](/asr-data/api#audio-doc) 引用原始
+  [`AudioSource`](/asr-data/api#audio-source)，并保存稳定 ID、业务元数据和各声道
+  的 [`Timeline`](/asr-data/api#timeline)。解码后的
+  [`Audio`](/asr-data/api#audio) 与 [`AudioChunk`](/asr-data/api#audio-chunk) 不
+  会直接存入 [`AudioDoc`](/asr-data/api#audio-doc)。
+- **Timeline 与 Annotation**：每个 [`Timeline`](/asr-data/api#timeline) 具有
+  channel 和 duration，并将 annotation 分为不带来源的 `Reference` 与必须提供
+  `source` 的 `Prediction`。
+- **Annotation payload**：[`Annotation`](/asr-data/api#annotation) 保存
+  range、status 和 confidence，其 payload 可以是
+  `Speech`、[`Speaker`](/asr-data/api#speaker) 或
+  [`Transcription`](/asr-data/api#transcription)。[`Speaker`](/asr-data/api#speaker)
+  使用 `name` 标识说话人，并可包含
+  [`Transcription`](/asr-data/api#transcription)；[`Transcription`](/asr-data/api#transcription)
+  保存 text、language、confidence 以及细粒度 [`Token`](/asr-data/api#token)。
+- **数据库**：[`AudioDB`](/asr-data/api#audio-db) 将完整的
+  [`AudioDoc`](/asr-data/api#audio-doc) 持久化到可查询的 SQLite 数据库。
+
 ## 快速开始 {id="quickstart"}
 
-下面的示例从音频文件创建记录，写入一条模型转写，并保存到数据库：
+下面的示例创建一条音频记录，加入参考说话人标注和模型预测，然后写入数据库：
 
 ```python
-from asr_data import Audio, AudioDB
+from asr_data import AudioDB, AudioDoc, AudioSource
+from asr_data.annotation import Speaker, Transcription
 
-audio = Audio.from_file("audio.wav", id="call-001")
-audio.metadata["split"] = "train"
+# 加载音频
+URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+source = AudioSource.from_url(URL)
+audio = source.load()
 
-audio.timeline("mono").add_transcription(
+# 创建音频文档
+doc = AudioDoc(source, id="example-001")
+doc.metadata["split"] = "train"
+
+# 创建时间线用于标注
+timeline = doc.ensure_timeline("mono", duration_ms=audio.duration_ms)
+end_ms = timeline.duration_ms
+
+# 添加说话人标注
+timeline.reference.add_speaker(
     0,
-    1_200,
-    "你好，世界",
-    source="qwen-asr",
-    source_kind="model",
-    language="zh",
-    confidence=0.96,
+    end_ms,
+    Speaker(
+        "speaker-1",
+        transcription=Transcription("甚至出现交易几乎停滞的情况", language="zh"),
+    ),
 )
 
-db = AudioDB("dataset.sqlite")
-db.insert(audio)
+# 添加模型预测
+timeline.prediction.add_transcription(
+    0,
+    end_ms,
+    Transcription("甚至出现交易几乎停滞的情况", language="zh", confidence=0.96),
+    source="qwen-asr",
+)
 
-loaded = db["call-001"]
-print(loaded.timeline("mono").transcript().text)
+# 数据库
+db = AudioDB("dataset.db")
+if doc.id in db:
+    db.delete(doc.id)
+db.insert(doc)
+loaded = db[doc.id]
+loaded_timeline = loaded.timeline("mono")
+print(loaded_timeline.reference.transcript().text)
+print(loaded_timeline.prediction.transcript("qwen-asr").text)
 ```
 
 <Infobox title="时间单位">
 
-所有标注范围和音频时长均使用毫秒。上例中的 `0` 和 `1_200` 表示从 0 ms
-到 1200 ms。
+所有 annotation 范围和 timeline 时长均使用毫秒。添加 annotation 时必须满足
+`0 <= start_ms <= end_ms <= timeline.duration_ms`。
 
 </Infobox>
-
-## 核心概念 {id="concepts"}
-
-| 类型 | 用途 |
-| --- | --- |
-| `Audio` | 一条音频记录，包含来源、ID、时长、元数据和多个声道时间轴 |
-| `Waveform` | 解码后的浮点音频样本及其采样率、声道信息 |
-| `Timeline` | 某个声道上按时间排列的标注集合 |
-| `Annotation` | 具有时间范围、类型、状态、来源和置信度的标注 |
-| `Transcript` | 从最终转写或句子标注组合得到的文本 |
-| `AudioDB` | 保存和查询 `Audio` 记录的 SQLite 数据库 |
