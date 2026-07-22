@@ -2,6 +2,8 @@
 
 Documentation hub for libraries maintained by `di-osc`.
 
+This documentation site is based on the [spaCy website](https://spacy.io/).
+
 ## Development
 
 ```bash
