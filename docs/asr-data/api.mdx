@@ -12,6 +12,8 @@ menu:
   - ['TimelineEvaluation', 'timeline-evaluation']
   - ['TranscriptionEvaluation', 'transcription-evaluation']
   - ['SpeechEvaluation', 'speech-evaluation']
+  - ['evaluate_dataset', 'evaluate-dataset']
+  - ['DatasetEvaluation', 'dataset-evaluation']
   - ['ReferenceAnnotations', 'reference-annotations']
   - ['PredictionAnnotations', 'prediction-annotations']
   - ['Token', 'token']
@@ -25,6 +27,16 @@ menu:
   - ['AsrDataError', 'asr-data-error']
   - ['normalize_zh', 'normalize-zh']
 ---
+
+所有公开 Python 类、方法、属性和顶层函数都提供运行时 docstring。在解释器、Jupyter
+或 IDE 中可以直接查看与本页一致的参数、返回值、异常和示例：
+
+```python
+from asr_data import AudioDB, AudioSource
+
+help(AudioSource.load)
+print(AudioDB.eval.__doc__)
+```
 
 ## AudioSource {id="audio-source",tag="class"}
 
@@ -516,8 +528,8 @@ source 约束。
 
 ## Timeline.eval {id="timeline-eval",tag="method"}
 
-使用 reference 评估指定来源的 prediction。转写与 Speech 可以来自不同模型，也可以
-只评测其中一项。转写默认先执行内嵌中文 TN，再计算 CER。
+使用 reference 评估 prediction。不传 source 时自动评测全部可用来源；也可以为转写
+和 Speech 分别指定一个或多个来源。转写默认先执行内嵌中文 TN，再计算 CER。
 
 > #### Example
 >
@@ -527,7 +539,7 @@ source 约束。
 >
 > URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
 > doc = AudioDoc(AudioSource.from_url(URL))
-> timeline = doc.ensure_timeline("mono", duration_ms=4_204)
+> timeline = doc.timeline("mono")
 > text = "甚至出现交易几乎停滞的情况"
 >
 > timeline.reference.add_speech(0, timeline.duration_ms)
@@ -544,32 +556,34 @@ source 约束。
 >     source="qwen-asr",
 > )
 >
-> result = timeline.eval(
->     transcription="qwen-asr",
->     speech="silero-vad",
+> result = timeline.eval()
+> print(
+>     result.transcription["qwen-asr"].cer,
+>     result.speech["silero-vad"].f1,
 > )
-> print(result.transcription.cer, result.speech.f1)
 > ```
 
-| Name            | Description                                        |
-| --------------- | -------------------------------------------------- |
-| _keyword-only_  |                                                    |
-| `transcription` | 要评测的转写 prediction 来源。~~Optional[str]~~    |
-| `speech`        | 要评测的 Speech prediction 来源。~~Optional[str]~~ |
-| `normalize`     | 是否执行内嵌中文 TN，默认为 `True`。~~bool~~       |
-| **RETURNS**     | 本次请求的评测结果。~~TimelineEvaluation~~         |
+| Name            | Description                                                   |
+| --------------- | ------------------------------------------------------------- |
+| _keyword-only_  |                                                               |
+| `transcription` | 转写来源或来源列表；省略时自动发现。~~Optional[str \| List[str]]~~ |
+| `speech`        | Speech 来源或来源列表；省略时自动发现。~~Optional[str \| List[str]]~~ |
+| `normalize`     | 是否执行内嵌中文 TN，默认为 `True`。~~bool~~                  |
+| **RETURNS**     | 按任务和 source 分组的结果。~~TimelineEvaluation~~            |
 
-至少需要提供 `transcription` 或 `speech`。对应的 reference 或指定来源 prediction
-不存在时抛出 [`AsrDataError`](#asr-data-error)。
+不传两个 source 参数时自动评测全部具有 reference 的任务。只传一个参数时只评测该
+任务。显式指定的 reference 或 prediction 不存在，以及完全没有可评测内容时，抛出
+[`AsrDataError`](#asr-data-error)。
 
 ## TimelineEvaluation {id="timeline-evaluation",tag="class"}
 
-`Timeline.eval()` 的组合结果。没有请求的评测项为 `None`。
+`Timeline.eval()` 的组合结果。两个属性都以 prediction source 为键；没有评测的任
+务返回空字典。
 
-| Name            | Description                                         |
-| --------------- | --------------------------------------------------- |
-| `transcription` | 转写评测结果。~~Optional[TranscriptionEvaluation]~~ |
-| `speech`        | Speech 评测结果。~~Optional[SpeechEvaluation]~~     |
+| Name            | Description                                             |
+| --------------- | ------------------------------------------------------- |
+| `transcription` | 各转写来源的结果。~~Dict[str, TranscriptionEvaluation]~~ |
+| `speech`        | 各 Speech 来源的结果。~~Dict[str, SpeechEvaluation]~~   |
 
 ## TranscriptionEvaluation {id="transcription-evaluation",tag="class"}
 
@@ -612,6 +626,85 @@ source 约束。
 | `recall`            | 区间召回率。~~float~~                     |
 | `f1`                | 区间 F1。~~float~~                        |
 | `iou`               | reference 与 prediction 的 IoU。~~float~~ |
+
+reference 至少有一条 Speech annotation 才表示该 timeline 已完成 Speech 标注；区
+间之外的部分视为静音。没有 reference Speech 时自动模式不会评测该任务。
+
+## evaluate_dataset {id="evaluate-dataset",tag="function"}
+
+聚合内存中的多个 AudioDoc。每条 timeline 独立计算编辑距离或时间混淆矩阵，再累加
+原始统计量。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioDoc, AudioSource, evaluate_dataset
+> from asr_data.annotation import Transcription
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> text = "甚至出现交易几乎停滞的情况"
+> docs = []
+> for audio_id, prediction in [
+>     ("sample-1", text),
+>     ("sample-2", "甚至出现交易停滞的情况"),
+> ]:
+>     doc = AudioDoc(AudioSource.from_url(URL), id=audio_id)
+>     timeline = doc.timeline("mono")
+>     timeline.reference.add_transcription(
+>         0, timeline.duration_ms, Transcription(text)
+>     )
+>     timeline.prediction.add_transcription(
+>         0,
+>         timeline.duration_ms,
+>         Transcription(prediction),
+>         source="qwen-asr",
+>     )
+>     docs.append(doc)
+>
+> result = evaluate_dataset(
+>     docs,
+>     transcription="qwen-asr",
+> )
+> print(result.transcription["qwen-asr"].cer)
+> print(result.transcription["qwen-asr"].coverage)
+> ```
+
+| Name            | Description                                                   |
+| --------------- | ------------------------------------------------------------- |
+| `docs`          | 要评测的 AudioDoc 列表。~~List[AudioDoc]~~                    |
+| _keyword-only_  |                                                               |
+| `transcription` | 转写来源或来源列表；省略时自动发现。~~Optional[str \| List[str]]~~ |
+| `speech`        | Speech 来源或来源列表；省略时自动发现。~~Optional[str \| List[str]]~~ |
+| `normalize`     | 是否执行中文 TN，默认为 `True`。~~bool~~                      |
+| **RETURNS**     | 数据集级聚合结果。~~DatasetEvaluation~~                       |
+
+## DatasetEvaluation {id="dataset-evaluation",tag="class"}
+
+数据集级组合结果。
+
+| Name            | Description                                                    |
+| --------------- | -------------------------------------------------------------- |
+| `documents`     | 输入文档数量。~~int~~                                          |
+| `timelines`     | 输入 timeline 数量。~~int~~                                    |
+| `transcription` | 各来源的 corpus CER 结果。~~Dict[str, DatasetTranscriptionEvaluation]~~ |
+| `speech`        | 各来源的总体区间结果。~~Dict[str, DatasetSpeechEvaluation]~~   |
+
+`DatasetTranscriptionEvaluation` 提供 `cer`、`substitutions`、`deletions`、
+`insertions`、`reference_chars`、`hypothesis_chars`、`exact_match_rate` 和字符级
+precision、recall、F1。`DatasetSpeechEvaluation` 提供累计的 TP、TN、FP、FN 毫秒
+数及 precision、recall、F1、IoU。
+
+两种结果都提供：
+
+| Name                     | Description                               |
+| ------------------------ | ----------------------------------------- |
+| `evaluated_documents`    | 实际参与该 source 评测的文档数。~~int~~   |
+| `evaluated_timelines`    | 实际参与评测的 timeline 数。~~int~~       |
+| `unannotated_timelines`  | 缺少对应 reference 的 timeline 数。~~int~~ |
+| `missing_predictions`    | 有 reference 但缺少该 source 的数量。~~int~~ |
+| `coverage`               | `evaluated / (evaluated + missing)`。~~float~~ |
+| `unannotated_ids`        | 未标注的 `audio_id:channel` 列表。~~List[str]~~ |
+| `missing_prediction_ids` | 缺少预测的 `audio_id:channel` 列表。~~List[str]~~ |
 
 ## ReferenceAnnotations {id="reference-annotations",tag="class"}
 
@@ -1194,6 +1287,61 @@ payload 固定为 `None`。替换 Transcription 或 Speaker 时会重新校验 t
 
 时间参数必须是带时区的 `datetime`，并使用 `from <= timestamp < until` 半开区间。
 创建和修改时间由 `AudioDB` 自动维护，不会出现在返回的 `AudioDoc` 中。
+
+## AudioDB.eval {id="audio-db-eval",tag="method"}
+
+评测数据库中全部匹配记录。内部通过 AudioDoc ID 游标分页，`batch_size` 只影响每批
+读取数量，不限制最终数据集大小。
+
+> #### Example
+>
+> ```python
+> from tempfile import TemporaryDirectory
+>
+> from asr_data import AudioDB, AudioDoc, AudioSource
+> from asr_data.annotation import Transcription
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> text = "甚至出现交易几乎停滞的情况"
+>
+> with TemporaryDirectory() as directory:
+>     db = AudioDB.create(f"{directory}/evaluation.db")
+>     doc = AudioDoc(AudioSource.from_url(URL), id="sample-1")
+>     timeline = doc.timeline("mono")
+>     timeline.reference.add_transcription(
+>         0, timeline.duration_ms, Transcription(text)
+>     )
+>     timeline.prediction.add_transcription(
+>         0, timeline.duration_ms, Transcription(text), source="qwen-asr"
+>     )
+>     doc.metadata["split"] = "test"
+>     db.insert(doc)
+>
+>     result = db.eval(
+>         transcription="qwen-asr",
+>         metadata={"split": "test"},
+>         batch_size=100,
+>     )
+>     print(result.transcription["qwen-asr"].cer)
+>     print(result.transcription["qwen-asr"].coverage)
+> ```
+
+| Name              | Description                                                   |
+| ----------------- | ------------------------------------------------------------- |
+| _keyword-only_    |                                                               |
+| `transcription`   | 转写来源或来源列表；省略时自动发现。~~Optional[str \| List[str]]~~ |
+| `speech`          | Speech 来源或来源列表；省略时自动发现。~~Optional[str \| List[str]]~~ |
+| `normalize`       | 是否执行中文 TN，默认为 `True`。~~bool~~                      |
+| `batch_size`      | 每次读取的文档数，默认为 `100`。~~int~~                       |
+| `after`           | 可选起始游标。~~Optional[str]~~                               |
+| `min_duration_ms` | 可选最短时长。~~Optional[int]~~                               |
+| `max_duration_ms` | 可选最长时长。~~Optional[int]~~                               |
+| `created_from`    | 创建时间下界。~~Optional[datetime]~~                          |
+| `created_until`   | 创建时间上界。~~Optional[datetime]~~                          |
+| `updated_from`    | 修改时间下界。~~Optional[datetime]~~                          |
+| `updated_until`   | 修改时间上界。~~Optional[datetime]~~                          |
+| `metadata`        | 精确匹配的 JSON 元数据。~~Optional[Dict[str, Any]]~~          |
+| **RETURNS**       | 数据集级聚合结果。~~DatasetEvaluation~~                       |
 
 ## AudioDB.update {id="audio-db-update",tag="method"}
 

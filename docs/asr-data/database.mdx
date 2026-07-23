@@ -5,6 +5,7 @@ section: asr-data
 menu:
   - ['打开数据库', 'open']
   - ['增删改查', 'crud']
+  - ['数据集评测', 'evaluation']
   - ['数据库元数据', 'metadata']
   - ['只读模式', 'readonly']
 ---
@@ -137,6 +138,30 @@ next_page = db.query(limit=10, after=page[-1].id)
 `after` 是游标而不是数字页码，因此即使数据库较大，也不需要跳过前面所有记录。
 metadata 过滤要求存储值与查询值匹配，适合数据集 split、语言、来源和审核状态等结
 构化字段。
+
+## 数据集评测 {id="evaluation"}
+
+`db.eval()` 使用与 `query()` 相同的筛选条件，并通过 AudioDoc ID 游标自动读取全部
+匹配记录。`batch_size` 只控制每次从 SQLite 读取的数量，不限制最终评测集大小。
+
+> #### Example
+>
+> ```python
+> result = db.eval(
+>     transcription=["qwen-asr", "whisper"],
+>     speech="silero-vad",
+>     metadata={"split": "test"},
+>     batch_size=100,
+> )
+>
+> qwen = result.transcription["qwen-asr"]
+> print(qwen.cer, qwen.coverage)
+> print(result.speech["silero-vad"].f1)
+> ```
+
+不传 `transcription` 和 `speech` 时自动发现全部可评测来源。结果按 source 分组，并
+记录缺少 reference、缺少 prediction 和实际参与聚合的 timeline 数量。只读数据库同
+样可以执行评测。
 
 ## 数据库元数据 {id="metadata"}
 
