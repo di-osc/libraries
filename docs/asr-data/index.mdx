@@ -40,15 +40,17 @@ cargo add asr-data
 />
 
 - **音频来源**：[`AudioSource`](/asr-data/api#audio-source) 统一表达
-  Path、URL、Bytes、Base64 和 PCM。调用 `load()` / `aload()` 得到完整的
+  Path、URL、Bytes、Base64 和 PCM。调用 `probe()` / `aprobe()` 得到不含样本的
+  [`AudioInfo`](/asr-data/api#audio-info)，调用 `load()` / `aload()` 得到完整的
   [`Audio`](/asr-data/api#audio)，调用 `stream()` / `astream()` 则持续产生
   [`AudioChunk`](/asr-data/api#audio-chunk)。
 - **解码后的音频**：[`Audio`](/asr-data/api#audio) 保存浮点 `Samples` 和
   `AudioFormat`；[`AudioChunk`](/asr-data/api#audio-chunk) 额外记录 `offset_ms`
   与 `is_final`。两者都支持声道提取、重采样和切片。
 - **可持久化文档**：[`AudioDoc`](/asr-data/api#audio-doc) 引用原始
-  [`AudioSource`](/asr-data/api#audio-source)，并保存稳定 ID、业务元数据和各声道
-  的 [`Timeline`](/asr-data/api#timeline)。解码后的
+  [`AudioSource`](/asr-data/api#audio-source)，并保存
+  [`AudioInfo`](/asr-data/api#audio-info)、稳定 ID、业务元数据和自动创建的各声道
+  [`Timeline`](/asr-data/api#timeline)。解码后的
   [`Audio`](/asr-data/api#audio) 与 [`AudioChunk`](/asr-data/api#audio-chunk) 不
   会直接存入 [`AudioDoc`](/asr-data/api#audio-doc)。
 - **Timeline 与 Annotation**：每个 [`Timeline`](/asr-data/api#timeline) 具有
@@ -72,17 +74,16 @@ cargo add asr-data
 from asr_data import AudioDB, AudioDoc, AudioSource
 from asr_data.annotation import Speaker, Transcription
 
-# 加载音频
+# 创建来源
 URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
 source = AudioSource.from_url(URL)
-audio = source.load()
 
-# 创建音频文档
+# 探测格式并自动创建时间轴
 doc = AudioDoc(source, id="example-001")
 doc.metadata["split"] = "train"
 
-# 创建时间线用于标注
-timeline = doc.ensure_timeline("mono", duration_ms=audio.duration_ms)
+# 获取自动创建的时间线
+timeline = doc.timeline("mono")
 end_ms = timeline.duration_ms
 
 # 添加说话人标注
@@ -104,7 +105,7 @@ timeline.prediction.add_transcription(
 )
 
 # 数据库
-db = AudioDB("dataset.db")
+db = AudioDB.create("dataset.db")
 if doc.id in db:
     db.delete(doc.id)
 db.insert(doc)

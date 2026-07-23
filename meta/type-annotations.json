@@ -9,6 +9,7 @@
     "AudioDB": "/asr-data/api#audio-db",
     "AudioDoc": "/asr-data/api#audio-doc",
     "AudioFormat": "/asr-data/api#audio-properties",
+    "AudioInfo": "/asr-data/api#audio-info",
     "AudioSource": "/asr-data/api#audio-source",
     "PredictionAnnotations": "/asr-data/api#prediction-annotations",
     "ReferenceAnnotations": "/asr-data/api#reference-annotations",

@@ -4,6 +4,7 @@ version: 0.1.1
 section: asr-data
 menu:
   - ['AudioSource', 'audio-source']
+  - ['AudioInfo', 'audio-info']
   - ['Audio', 'audio']
   - ['AudioChunk', 'audio-chunk']
   - ['AudioDoc', 'audio-doc']
@@ -188,6 +189,29 @@ S16LE 字节。`AudioSource` 可以加载为完整 [`Audio`](#audio)，也可以
 
 异步程序使用相同参数调用 `await source.aload(...)`。
 
+## AudioSource.probe {id="audio-source-probe",tag="method"}
+
+读取来源的格式和时长信息，但不解码音频样本。
+
+> #### Example
+>
+> ```python
+> from asr_data import AudioSource
+>
+> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
+> source = AudioSource.from_url(URL)
+> info = source.probe()
+>
+> print(info.sample_rate, info.channels)
+> print(info.frame_count, info.duration_ms)
+> ```
+
+| Name        | Description                              |
+| ----------- | ---------------------------------------- |
+| **RETURNS** | 音频格式、帧数和时长。~~AudioInfo~~      |
+
+异步环境使用 `await source.aprobe()`，返回相同的 [`AudioInfo`](#audio-info)。
+
 ## AudioSource.stream {id="audio-source-stream",tag="method"}
 
 按固定目标时长逐块解码音频。
@@ -226,6 +250,19 @@ S16LE 字节。`AudioSource` 可以加载为完整 [`Audio`](#audio)，也可以
 | `pcm`         | PCM 字节，否则为 `None`。~~Optional[bytes]~~                   |
 | `sample_rate` | PCM 采样率，否则为 `None`。~~Optional[int]~~                   |
 | `channels`    | PCM 声道数，否则为 `None`。~~Optional[int]~~                   |
+
+## AudioInfo {id="audio-info",tag="class"}
+
+尚未解码样本的音频元信息。`AudioSource.probe()` 返回该对象；
+[`AudioDoc`](#audio-doc) 也会把它保存在 `audio_info` 属性中并随文档持久化。
+
+| Name            | Description                                  |
+| --------------- | -------------------------------------------- |
+| `sample_rate`   | 原始采样率。~~int~~                          |
+| `channels`      | 原始声道数。~~int~~                          |
+| `frame_count`   | 每个声道的有效采样帧数。~~int~~              |
+| `duration_ms`   | 根据帧数计算的浮点毫秒时长。~~float~~        |
+| `source_format` | 原始编码、采样率和声道。~~AudioFormat~~      |
 
 ## Audio {id="audio",tag="class"}
 
@@ -366,13 +403,14 @@ S16LE 字节。`AudioSource` 可以加载为完整 [`Audio`](#audio)，也可以
 
 ## AudioDoc {id="audio-doc",tag="class"}
 
-一条可持久化的音频记录，包含稳定 ID、[`AudioSource`](#audio-source)、业务元数据
-和各声道的 [`Timeline`](#timeline)。解码后的 [`Audio`](#audio) 和
+一条可持久化的音频记录，包含稳定 ID、[`AudioSource`](#audio-source)、
+[`AudioInfo`](#audio-info)、业务元数据和各声道的 [`Timeline`](#timeline)。解码后的 [`Audio`](#audio) 和
 [`AudioChunk`](#audio-chunk) 不会直接存入 `AudioDoc`。
 
 ## AudioDoc.\_\_init\_\_ {id="audio-doc-init",tag="method"}
 
-创建一条音频记录。
+创建一条音频记录。构造时会探测来源但不解码样本，保存 `audio_info`，并自动创建
+全部原始声道的 timeline。
 
 > #### Example
 >
@@ -385,12 +423,17 @@ S16LE 字节。`AudioSource` 可以加载为完整 [`Audio`](#audio)，也可以
 >     id="call-001",
 > )
 > print(doc.id, doc.source.url)
+> print(doc.audio_info.duration_ms, doc.timelines.keys())
 > ```
 
 | Name     | Description                                    |
 | -------- | ---------------------------------------------- |
 | `source` | 音频来源。~~AudioSource~~                      |
 | `id`     | 稳定业务 ID；省略时自动生成。~~Optional[str]~~ |
+
+单声道创建 `mono`；双声道创建 `left` 和 `right`；更多声道继续以 `2`、`3` 等
+编号。每条 timeline 的整数毫秒时长由 `audio_info` 向上取整得到。异步程序可以使用
+`await AudioDoc.afrom_source(source, id=...)`。
 
 ## AudioDoc.timeline {id="audio-doc-timeline",tag="method"}
 
@@ -412,10 +455,9 @@ S16LE 字节。`AudioSource` 可以加载为完整 [`Audio`](#audio)，也可以
 >
 > URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
 > source = AudioSource.from_url(URL)
-> audio = source.load()
 > doc = AudioDoc(source, id="example")
 >
-> left = doc.ensure_timeline("left", duration_ms=audio.duration_ms)
+> left = doc.ensure_timeline("left")
 > right = doc.ensure_timeline("right")
 >
 > assert left.duration_ms == right.duration_ms
@@ -424,7 +466,7 @@ S16LE 字节。`AudioSource` 可以加载为完整 [`Audio`](#audio)，也可以
 | Name          | Description                                                             |
 | ------------- | ----------------------------------------------------------------------- |
 | `channel`     | 声道名称或索引。~~Union[str, int]~~                                     |
-| `duration_ms` | 首个 timeline 必须提供；浮点值向上取整。~~Optional[Union[int, float]]~~ |
+| `duration_ms` | 可选校验时长；省略时使用 `audio_info`。~~Optional[Union[int, float]]~~ |
 | **RETURNS**   | 已存在或新创建的 timeline。~~Timeline~~                                 |
 
 如果显式 duration 与其他声道不一致，会抛出 `AsrDataError`。
@@ -449,12 +491,13 @@ source 约束。
 
 ## AudioDoc properties {id="audio-doc-properties",tag="properties"}
 
-| Name        | Description                                        |
-| ----------- | -------------------------------------------------- |
-| `id`        | 音频记录 ID。~~str~~                               |
-| `source`    | 原始音频来源。~~AudioSource~~                      |
-| `timelines` | 按声道名称索引的 timeline。~~Dict[str, Timeline]~~ |
-| `metadata`  | 可修改的 JSON 业务元数据。~~Dict[str, Any]~~       |
+| Name         | Description                                        |
+| ------------ | -------------------------------------------------- |
+| `id`         | 音频记录 ID。~~str~~                               |
+| `source`     | 原始音频来源。~~AudioSource~~                      |
+| `audio_info` | 已探测并持久化的音频信息。~~AudioInfo~~            |
+| `timelines`  | 按声道名称索引的 timeline。~~Dict[str, Timeline]~~ |
+| `metadata`   | 可修改的 JSON 业务元数据。~~Dict[str, Any]~~       |
 
 ## Timeline {id="timeline",tag="class"}
 
@@ -588,8 +631,8 @@ transcription 的 Speaker 重叠。时间范围采用 `[start_ms, end_ms)`，首
 >
 > URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
 > source = AudioSource.from_url(URL)
-> audio = source.load()
-> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+> doc = AudioDoc(source)
+> timeline = doc.timeline("mono")
 >
 > speech = timeline.reference.add_speech(
 >     0,
@@ -619,8 +662,8 @@ transcription 的 Speaker 重叠。时间范围采用 `[start_ms, end_ms)`，首
 >
 > URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
 > source = AudioSource.from_url(URL)
-> audio = source.load()
-> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+> doc = AudioDoc(source)
+> timeline = doc.timeline("mono")
 >
 > annotation = timeline.reference.add_transcription(
 >     0,
@@ -630,13 +673,13 @@ transcription 的 Speaker 重叠。时间范围采用 `[start_ms, end_ms)`，首
 > print(annotation.payload.text)
 > ```
 
-| Name            | Description                                      |
-| --------------- | ------------------------------------------------ |
-| `start_ms`      | 起始时间。~~int~~                                |
-| `end_ms`        | 结束时间。~~int~~                                |
-| `transcription` | 完整转写 payload。~~Transcription~~              |
-| `confidence`    | 可选 annotation 级置信度。~~Optional[float]~~    |
-| **RETURNS**     | Transcription annotation 句柄。~~Annotation~~    |
+| Name            | Description                                   |
+| --------------- | --------------------------------------------- |
+| `start_ms`      | 起始时间。~~int~~                             |
+| `end_ms`        | 结束时间。~~int~~                             |
+| `transcription` | 完整转写 payload。~~Transcription~~           |
+| `confidence`    | 可选 annotation 级置信度。~~Optional[float]~~ |
+| **RETURNS**     | Transcription annotation 句柄。~~Annotation~~ |
 
 ## ReferenceAnnotations.add_speaker {id="reference-add-speaker",tag="method"}
 
@@ -652,8 +695,8 @@ transcription 的 Speaker 重叠。时间范围采用 `[start_ms, end_ms)`，首
 >
 > URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
 > source = AudioSource.from_url(URL)
-> audio = source.load()
-> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+> doc = AudioDoc(source)
+> timeline = doc.timeline("mono")
 > speaker = timeline.reference.add_speaker(
 >     0,
 >     timeline.duration_ms,
@@ -665,13 +708,13 @@ transcription 的 Speaker 重叠。时间范围采用 `[start_ms, end_ms)`，首
 > print(speaker.payload.name, speaker.payload.transcription.text)
 > ```
 
-| Name         | Description                                      |
-| ------------ | ------------------------------------------------ |
-| `start_ms`   | 起始时间。~~int~~                                |
-| `end_ms`     | 结束时间。~~int~~                                |
-| `speaker`    | 说话人 payload。~~Speaker~~                      |
-| `confidence` | 可选 annotation 级置信度。~~Optional[float]~~    |
-| **RETURNS**  | Speaker annotation 句柄。~~Annotation~~          |
+| Name         | Description                                   |
+| ------------ | --------------------------------------------- |
+| `start_ms`   | 起始时间。~~int~~                             |
+| `end_ms`     | 结束时间。~~int~~                             |
+| `speaker`    | 说话人 payload。~~Speaker~~                   |
+| `confidence` | 可选 annotation 级置信度。~~Optional[float]~~ |
+| **RETURNS**  | Speaker annotation 句柄。~~Annotation~~       |
 
 带时间范围的 token 必须完全位于 speaker annotation 的范围内。
 
@@ -688,8 +731,8 @@ Sentence。Python 目前不提供 Sentence 的创建方法。
 >
 > URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
 > source = AudioSource.from_url(URL)
-> audio = source.load()
-> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+> doc = AudioDoc(source)
+> timeline = doc.timeline("mono")
 > timeline.reference.add_transcription(
 >     0,
 >     timeline.duration_ms,
@@ -710,8 +753,8 @@ Sentence。Python 目前不提供 Sentence 的创建方法。
 ## PredictionAnnotations {id="prediction-annotations",tag="class"}
 
 模型或处理流程输出的集合。每次添加都必须通过 keyword-only 参数提供非空字符串
-`source`。每个 source 独立应用与 reference 相同的重叠规则；不同 source 可以重
-叠。source 区分大小写且不会自动去除空白。完整规则见
+`source`。每个 source 独立应用与 reference 相同的重叠规则；不同 source 可以重叠
+。source 区分大小写且不会自动去除空白。完整规则见
 [标注校验规范](/asr-data/annotations#validation)。
 
 ## PredictionAnnotations.add_speech {id="prediction-add-speech",tag="method"}
@@ -725,8 +768,8 @@ Sentence。Python 目前不提供 Sentence 的创建方法。
 >
 > URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
 > source = AudioSource.from_url(URL)
-> audio = source.load()
-> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+> doc = AudioDoc(source)
+> timeline = doc.timeline("mono")
 >
 > speech = timeline.prediction.add_speech(
 >     0,
@@ -757,8 +800,8 @@ Sentence。Python 目前不提供 Sentence 的创建方法。
 >
 > URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
 > source = AudioSource.from_url(URL)
-> audio = source.load()
-> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+> doc = AudioDoc(source)
+> timeline = doc.timeline("mono")
 >
 > annotation = timeline.prediction.add_transcription(
 >     0,
@@ -769,15 +812,15 @@ Sentence。Python 目前不提供 Sentence 的创建方法。
 > print(annotation.source, annotation.payload.text)
 > ```
 
-| Name            | Description                                      |
-| --------------- | ------------------------------------------------ |
-| `start_ms`      | 起始时间。~~int~~                                |
-| `end_ms`        | 结束时间。~~int~~                                |
-| `transcription` | 完整转写 payload。~~Transcription~~              |
-| _keyword-only_  |                                                  |
-| `source`        | 产生结果的模型或流程。~~str~~                    |
-| `confidence`    | 可选 annotation 级置信度。~~Optional[float]~~    |
-| **RETURNS**     | Transcription annotation 句柄。~~Annotation~~    |
+| Name            | Description                                   |
+| --------------- | --------------------------------------------- |
+| `start_ms`      | 起始时间。~~int~~                             |
+| `end_ms`        | 结束时间。~~int~~                             |
+| `transcription` | 完整转写 payload。~~Transcription~~           |
+| _keyword-only_  |                                               |
+| `source`        | 产生结果的模型或流程。~~str~~                 |
+| `confidence`    | 可选 annotation 级置信度。~~Optional[float]~~ |
+| **RETURNS**     | Transcription annotation 句柄。~~Annotation~~ |
 
 ## PredictionAnnotations.add_speaker {id="prediction-add-speaker",tag="method"}
 
@@ -791,8 +834,8 @@ Sentence。Python 目前不提供 Sentence 的创建方法。
 >
 > URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
 > source = AudioSource.from_url(URL)
-> audio = source.load()
-> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+> doc = AudioDoc(source)
+> timeline = doc.timeline("mono")
 > transcription = Transcription("甚至出现交易几乎停滞的情况", language="zh")
 >
 > annotation = timeline.prediction.add_speaker(
@@ -804,15 +847,15 @@ Sentence。Python 目前不提供 Sentence 的创建方法。
 > print(annotation.payload.name, annotation.payload.transcription.text)
 > ```
 
-| Name           | Description                                      |
-| -------------- | ------------------------------------------------ |
-| `start_ms`     | 起始时间。~~int~~                                |
-| `end_ms`       | 结束时间。~~int~~                                |
-| `speaker`      | 说话人 payload。~~Speaker~~                      |
-| _keyword-only_ |                                                  |
-| `source`       | 产生结果的模型或流程。~~str~~                    |
-| `confidence`   | 可选 annotation 级置信度。~~Optional[float]~~    |
-| **RETURNS**    | Speaker annotation 句柄。~~Annotation~~          |
+| Name           | Description                                   |
+| -------------- | --------------------------------------------- |
+| `start_ms`     | 起始时间。~~int~~                             |
+| `end_ms`       | 结束时间。~~int~~                             |
+| `speaker`      | 说话人 payload。~~Speaker~~                   |
+| _keyword-only_ |                                               |
+| `source`       | 产生结果的模型或流程。~~str~~                 |
+| `confidence`   | 可选 annotation 级置信度。~~Optional[float]~~ |
+| **RETURNS**    | Speaker annotation 句柄。~~Annotation~~       |
 
 ## PredictionAnnotations.by_source {id="prediction-by-source",tag="method"}
 
@@ -835,8 +878,8 @@ Sentence。Python 目前不提供 Sentence 的创建方法。
 >
 > URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
 > source = AudioSource.from_url(URL)
-> audio = source.load()
-> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+> doc = AudioDoc(source)
+> timeline = doc.timeline("mono")
 > timeline.prediction.add_transcription(
 >     0,
 >     timeline.duration_ms,
@@ -874,8 +917,8 @@ Sentence。Python 目前不提供 Sentence 的创建方法。
 >
 > URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
 > source = AudioSource.from_url(URL)
-> audio = source.load()
-> timeline = AudioDoc(source).ensure_timeline("mono", audio.duration_ms)
+> doc = AudioDoc(source)
+> timeline = doc.timeline("mono")
 > timeline.prediction.add_transcription(
 >     0,
 >     timeline.duration_ms,
@@ -887,7 +930,7 @@ Sentence。Python 目前不提供 Sentence 的创建方法。
 >     "whisper-raw",
 >     "whisper-large-v2",
 > )
-> print(changed, timeline.prediction.sources)
+> print(changed, timeline.prediction.sources["transcription"])
 > ```
 
 | Name          | Description             |
@@ -896,8 +939,18 @@ Sentence。Python 目前不提供 Sentence 的创建方法。
 | `to_source`   | 新来源名称。~~str~~     |
 | **RETURNS**   | 修改的标注数量。~~int~~ |
 
-`prediction.annotations` 返回全部预测，`prediction.sources` 返回排序、去重后的来
-源， `len(prediction)` 返回标注数量。
+`prediction.annotations` 返回全部预测；`prediction.sources` 返回按 annotation
+类型分组的来源字典，每组内排序并去重；`len(prediction)` 返回标注数量。例如：
+
+```python
+{
+    "speech": ["silero-vad"],
+    "transcription": ["whisper-large-v2"],
+    "speaker": [],
+}
+```
+
+实际字典固定包含全部 `AnnotationKind` 键，没有对应预测的类型返回空列表。
 
 ## Token {id="token",tag="class"}
 
@@ -1047,9 +1100,9 @@ payload 固定为 `None`。替换 Transcription 或 Speaker 时会重新校验 t
 将 [`AudioDoc`](#audio-doc) 保存到带 application ID 和 schema version 的 SQLite
 数据库。
 
-## AudioDB.\_\_init\_\_ {id="audio-db-init",tag="method"}
+## AudioDB.create {id="audio-db-create",tag="class method"}
 
-打开或创建数据库。
+创建新数据库。目标文件已经存在时抛出 `FileExistsError`。
 
 > #### Example
 >
@@ -1061,15 +1114,28 @@ payload 固定为 `None`。替换 Transcription 或 Speaker 时会重新校验 t
 >
 > with TemporaryDirectory() as directory:
 >     path = Path(directory) / "dataset.db"
->     db = AudioDB(str(path))
->     readonly = AudioDB(str(path), read_only=True)
->     print(len(db), len(readonly))
+>     db = AudioDB.create(str(path))
+>     opened = AudioDB.open(str(path))
+>     print(len(db), len(opened))
 > ```
+
+| Name        | Description                  |
+| ----------- | ---------------------------- |
+| `path`      | 新数据库文件路径。~~str~~    |
+| **RETURNS** | 新数据库连接。~~AudioDB~~    |
+
+## AudioDB.open {id="audio-db-open",tag="class method"}
+
+打开已有数据库并校验 application ID 与 schema version。文件不存在时抛出
+`FileNotFoundError`。
 
 | Name        | Description                            |
 | ----------- | -------------------------------------- |
-| `path`      | 数据库文件路径。~~str~~                |
+| `path`      | 已有数据库文件路径。~~str~~            |
 | `read_only` | 是否只读打开，默认为 `False`。~~bool~~ |
+| **RETURNS** | 数据库连接。~~AudioDB~~                |
+
+不支持 `AudioDB(path)` 直接构造，调用方必须明确选择 `create()` 或 `open()`。
 
 ## AudioDB.insert {id="audio-db-insert",tag="method"}
 
@@ -1082,11 +1148,12 @@ payload 固定为 `None`。替换 Transcription 或 Speaker 时会重新校验 t
 
 ## AudioDB.query {id="audio-db-query",tag="method"}
 
-按 ID 游标、时长和元数据筛选记录。
+按 ID 游标、时长、数据库自动维护的创建/修改时间和元数据筛选记录。
 
 > #### Example
 >
 > ```python
+> from datetime import datetime, timedelta, timezone
 > from pathlib import Path
 > from tempfile import TemporaryDirectory
 >
@@ -1096,12 +1163,18 @@ payload 固定为 `None`。替换 Transcription 或 Speaker 时会重新校验 t
 >
 > with TemporaryDirectory() as directory:
 >     path = Path(directory) / "dataset.db"
->     db = AudioDB(str(path))
+>     db = AudioDB.create(str(path))
 >     doc = AudioDoc(AudioSource.from_url(URL), id="call-001")
 >     doc.metadata["split"] = "train"
 >     db.insert(doc)
 >
->     page = db.query(limit=100, metadata={"split": "train"})
+>     now = datetime.now(timezone.utc)
+>     page = db.query(
+>         limit=100,
+>         created_from=now - timedelta(days=7),
+>         updated_from=now - timedelta(hours=24),
+>         metadata={"split": "train"},
+>     )
 >     print([item.id for item in page])
 > ```
 
@@ -1112,12 +1185,19 @@ payload 固定为 `None`。替换 Transcription 或 Speaker 时会重新校验 t
 | `after`           | 上一页最后一条 audio ID。~~Optional[str]~~           |
 | `min_duration_ms` | 可选最短时长。~~Optional[int]~~                      |
 | `max_duration_ms` | 可选最长时长。~~Optional[int]~~                      |
+| `created_from`    | 创建时间下界，包含。~~Optional[datetime]~~           |
+| `created_until`   | 创建时间上界，不包含。~~Optional[datetime]~~         |
+| `updated_from`    | 修改时间下界，包含。~~Optional[datetime]~~           |
+| `updated_until`   | 修改时间上界，不包含。~~Optional[datetime]~~         |
 | `metadata`        | 精确匹配的 JSON 元数据。~~Optional[Dict[str, Any]]~~ |
 | **RETURNS**       | 按 audio ID 排序的记录。~~List[AudioDoc]~~           |
 
+时间参数必须是带时区的 `datetime`，并使用 `from <= timestamp < until` 半开区间。
+创建和修改时间由 `AudioDB` 自动维护，不会出现在返回的 `AudioDoc` 中。
+
 ## AudioDB.update {id="audio-db-update",tag="method"}
 
-更新已有记录；仅在内容发生变化时写入。
+更新已有记录；仅在内容发生变化时写入并刷新内部修改时间。
 
 | Name        | Description                |
 | ----------- | -------------------------- |
@@ -1158,7 +1238,7 @@ payload 固定为 `None`。替换 Transcription 或 Speaker 时会重新校验 t
 >
 > with TemporaryDirectory() as directory:
 >     path = Path(directory) / "dataset.db"
->     db = AudioDB(str(path))
+>     db = AudioDB.create(str(path))
 >     db.insert(AudioDoc(AudioSource.from_url(URL), id="call-001"))
 >
 >     loaded = db["call-001"]

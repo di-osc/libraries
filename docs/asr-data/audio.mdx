@@ -4,6 +4,7 @@ teaser: 创建音频来源，加载、处理和流式读取音频
 section: asr-data
 menu:
   - ['音频来源', 'source']
+  - ['探测音频', 'probe']
   - ['加载音频', 'load']
   - ['音频处理', 'processing']
   - ['流式加载', 'streaming']
@@ -19,8 +20,8 @@ menu:
 ## 音频来源 {id="source"}
 
 `AudioSource` 是一个尚未解码的音频来源描述，而不是音频样本本身。创建来源时通常不
-读取文件、不发起网络请求，也不执行解码；真正的 I/O 发生在 `load()`、`aload()`、
-`stream()` 或 `astream()` 被调用时。
+读取文件、不发起网络请求，也不执行解码；真正的 I/O 发生在 `probe()`、
+`load()`、`stream()` 等方法被调用时。
 
 > #### Example
 >
@@ -52,6 +53,33 @@ menu:
 `from_bytes()` 中的字节仍然带有 WAV、MP3 等容器或编码信息，解码器可以从内容识别
 音频格式。`from_pcm()` 没有文件头，因此必须显式提供 `sample_rate` 和
 `channels`；每个样本使用有符号 16 位小端整数。
+
+## 探测音频 {id="probe"}
+
+`source.probe()` 读取音频容器或 PCM 参数，返回
+[`AudioInfo`](/asr-data/api#audio-info)，但不会把采样解码为浮点数组。它适合在创建
+标注文档前取得原始采样率、声道数、帧数和时长。
+
+> #### Example
+>
+> ```python
+> info = source.probe()
+>
+> print(info.sample_rate, info.channels)
+> print(info.frame_count, info.duration_ms)
+> print(info.source_format)
+> ```
+
+| 属性            | 含义                               |
+| --------------- | ---------------------------------- |
+| `sample_rate`   | 原始采样率                         |
+| `channels`      | 原始声道数                         |
+| `frame_count`   | 每个声道的有效采样帧数             |
+| `duration_ms`   | 根据帧数和采样率计算的浮点毫秒时长 |
+| `source_format` | 编码、采样率和声道组成的原始格式   |
+
+异步程序使用 `await source.aprobe()`。URL 来源仍需要下载编码数据，但探测过程不会
+执行样本解码；需要波形时再调用 `load()` 或 `aload()`。
 
 ## 加载音频 {id="load"}
 
