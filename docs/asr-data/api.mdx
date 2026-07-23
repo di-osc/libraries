@@ -19,7 +19,6 @@ menu:
   - ['Transcript', 'transcript']
   - ['Annotation', 'annotation']
   - ['AudioDB', 'audio-db']
-  - ['AnnotationStatus', 'annotation-status']
   - ['AnnotationKind', 'annotation-kind']
   - ['AnnotationPayload', 'annotation-payload-alias']
   - ['AsrDataError', 'asr-data-error']
@@ -573,7 +572,10 @@ source 约束。
 
 ## ReferenceAnnotations {id="reference-annotations",tag="class"}
 
-参考真值集合。Reference annotation 的 `source` 始终为 `None`。
+参考真值集合。Reference annotation 的 `source` 始终为 `None`。Speech 之间不得重
+叠；同名 Speaker 之间不得重叠；顶层 Transcription 之间不得重叠，且不得与携带
+transcription 的 Speaker 重叠。时间范围采用 `[start_ms, end_ms)`，首尾相接不算重
+叠。
 
 ## ReferenceAnnotations.add_speech {id="reference-add-speech",tag="method"}
 
@@ -634,7 +636,6 @@ source 约束。
 | `end_ms`        | 结束时间。~~int~~                                |
 | `transcription` | 完整转写 payload。~~Transcription~~              |
 | `confidence`    | 可选 annotation 级置信度。~~Optional[float]~~    |
-| `status`        | 标注状态，默认为 `"final"`。~~AnnotationStatus~~ |
 | **RETURNS**     | Transcription annotation 句柄。~~Annotation~~    |
 
 ## ReferenceAnnotations.add_speaker {id="reference-add-speaker",tag="method"}
@@ -670,15 +671,14 @@ source 约束。
 | `end_ms`     | 结束时间。~~int~~                                |
 | `speaker`    | 说话人 payload。~~Speaker~~                      |
 | `confidence` | 可选 annotation 级置信度。~~Optional[float]~~    |
-| `status`     | 标注状态，默认为 `"final"`。~~AnnotationStatus~~ |
 | **RETURNS**  | Speaker annotation 句柄。~~Annotation~~          |
 
 带时间范围的 token 必须完全位于 speaker annotation 的范围内。
 
 ## ReferenceAnnotations.transcript {id="reference-transcript",tag="method"}
 
-按开始时间组合最终状态的 Transcription、Speaker 内的 Transcription，以及从 Rust
-或历史数据读取到的 Sentence。Python 目前不提供 Sentence 的创建方法。
+按开始时间组合 Transcription、Speaker 内的 Transcription，以及从 Rust 读取到的
+Sentence。Python 目前不提供 Sentence 的创建方法。
 
 > #### Example
 >
@@ -710,7 +710,8 @@ source 约束。
 ## PredictionAnnotations {id="prediction-annotations",tag="class"}
 
 模型或处理流程输出的集合。每次添加都必须通过 keyword-only 参数提供非空字符串
-`source`。
+`source`。每个 source 独立应用与 reference 相同的重叠规则；不同 source 可以重
+叠。source 区分大小写且不会自动去除空白。
 
 ## PredictionAnnotations.add_speech {id="prediction-add-speech",tag="method"}
 
@@ -775,7 +776,6 @@ source 约束。
 | _keyword-only_  |                                                  |
 | `source`        | 产生结果的模型或流程。~~str~~                    |
 | `confidence`    | 可选 annotation 级置信度。~~Optional[float]~~    |
-| `status`        | 标注状态，默认为 `"final"`。~~AnnotationStatus~~ |
 | **RETURNS**     | Transcription annotation 句柄。~~Annotation~~    |
 
 ## PredictionAnnotations.add_speaker {id="prediction-add-speaker",tag="method"}
@@ -811,7 +811,6 @@ source 约束。
 | _keyword-only_ |                                                  |
 | `source`       | 产生结果的模型或流程。~~str~~                    |
 | `confidence`   | 可选 annotation 级置信度。~~Optional[float]~~    |
-| `status`       | 标注状态，默认为 `"final"`。~~AnnotationStatus~~ |
 | **RETURNS**    | Speaker annotation 句柄。~~Annotation~~          |
 
 ## PredictionAnnotations.by_source {id="prediction-by-source",tag="method"}
@@ -825,7 +824,7 @@ source 约束。
 
 ## PredictionAnnotations.transcript {id="prediction-transcript",tag="method"}
 
-组合指定来源的最终转写。
+组合指定来源的转写。
 
 > #### Example
 >
@@ -864,7 +863,7 @@ source 约束。
 
 ## PredictionAnnotations.relabel_source {id="prediction-relabel-source",tag="method"}
 
-批量重命名 prediction 来源。
+批量重命名 prediction 来源。若新来源会造成重叠冲突，操作报错且不会修改任何标注。
 
 > #### Example
 >
@@ -1008,7 +1007,6 @@ source 约束。
 | `id`         | 自动生成的 annotation ID。~~str~~                               |
 | `start_ms`   | 起始时间。~~int~~                                               |
 | `end_ms`     | 结束时间。~~int~~                                               |
-| `status`     | 当前状态。~~AnnotationStatus~~                                  |
 | `kind`       | Payload 类型。~~AnnotationKind~~                                |
 | `confidence` | Annotation 级置信度。~~Optional[float]~~                        |
 | `source`     | Prediction 来源；reference 为 `None`。~~Optional[str]~~         |
@@ -1018,7 +1016,7 @@ source 约束。
 
 获取或整体替换标注内容。新 payload 的类型必须与当前 `kind` 一致；Speech 的
 payload 固定为 `None`。替换 Transcription 或 Speaker 时会重新校验 token 时间范围
-。
+和重叠规则；校验失败时原 payload 保持不变。
 
 > #### Example
 >
@@ -1183,17 +1181,6 @@ payload 固定为 `None`。替换 Transcription 或 Speaker 时会重新校验 t
 | `set_metadata(key, value)` | 设置值。~~None~~                     |
 | `metadata_value(key)`      | 读取值。~~Optional[Any]~~            |
 | `delete_metadata(key)`     | 删除值并返回是否存在。~~bool~~       |
-
-## AnnotationStatus {id="annotation-status",tag="type alias"}
-
-描述 annotation 当前所处的生命周期状态。
-
-| Value       | Description                |
-| ----------- | -------------------------- |
-| `"partial"` | 尚未稳定的中间结果。       |
-| `"final"`   | 最终结果，会参与组合转写。 |
-| `"revised"` | 已修订的结果。             |
-| `"deleted"` | 逻辑删除的结果。           |
 
 ## AnnotationKind {id="annotation-kind",tag="type alias"}
 

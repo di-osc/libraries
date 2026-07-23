@@ -55,7 +55,7 @@ cargo add asr-data
   channel 和 duration，并将 annotation 分为不带来源的 `Reference` 与必须提供
   `source` 的 `Prediction`。
 - **Annotation payload**：[`Annotation`](/asr-data/api#annotation) 保存
-  range、status 和 confidence，其 payload 可以是
+  range 和 confidence，其 payload 可以是
   `Speech`、[`Speaker`](/asr-data/api#speaker) 或
   [`Transcription`](/asr-data/api#transcription)。[`Speaker`](/asr-data/api#speaker)
   使用 `name` 标识说话人，并可包含

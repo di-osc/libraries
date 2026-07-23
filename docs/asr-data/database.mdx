@@ -33,8 +33,8 @@ menu:
 > ```
 
 推荐使用 `.db` 后缀，以便工具和使用者识别文件类型。数据库包含专用 SQLite
-application ID 和 schema version；打开普通 SQLite 文件或不兼容版本时会立即报错，
-而不是尝试按错误结构读写。
+application ID 和 schema version。当前仅接受 schema v6；打开普通 SQLite 文件或
+其他版本时会立即报错，而不是尝试迁移或按错误结构读写。
 
 一个数据库可以包含大量 [`AudioDoc`](/asr-data/api#audio-doc)，但每个文档 ID 必须
 唯一。路径只决定数据库文件位置，不会改变
