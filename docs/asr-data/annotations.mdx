@@ -135,25 +135,86 @@ payload。
 问。修改 annotation 时应整体替换 payload，例如把新的 `Speaker` 赋给
 `speaker_annotation.payload`。
 
-### 来源 {id="provenance"}
+### 完整校验规范 {id="validation"}
 
-Reference 不携带来源；Prediction 的 `source` 直接使用模型或流程名称。source 必须
-包含非空白字符，区分大小写，并且不会自动 trim 或标准化。
+下面的规则是 annotation 的完整有效性标准。重叠校验以单个声道的
+[`Timeline`](/asr-data/api#timeline) 为边界：不同声道、reference 与 prediction
+彼此独立，可以互相重叠。
 
-### 范围与去重 {id="validation"}
+#### 当前状态与删除
 
-所有范围必须满足 `0 <= start_ms <= end_ms <= timeline.duration_ms`。Token 的
-`start_ms` 和 `end_ms` 必须同时提供或同时省略；带时间范围的 token 必须完全位于所
-属 Speaker 或 Transcription annotation 内。
+Annotation 不再具有 `status`。集合中的每条 annotation 都表示当前有效状态：修改
+时直接替换内容，删除时从集合中移除，不使用 `partial`、`revised`、`deleted` 等逻
+辑状态。
 
-内容完全相同的重复 `add_*()` 调用会返回已有 annotation，不会插入第二条记录。去重
-比较业务内容，自动生成的 annotation ID 不参与比较。
+#### 时间范围
 
-Speech 之间不得重叠；Speaker 按大小写敏感的 `name` 分组，同名 Speaker 不得重
-叠；顶层 Transcription 不得互相重叠，也不得与携带 transcription 的 Speaker 重
-叠。Prediction 在每个 source 内独立应用相同规则，不同 source 可以重叠。冲突时不
-会自动合并、裁剪或覆盖；修改 payload 或批量重命名 source 也会先完整校验，失败时
-保持原数据不变。
+- Annotation 范围必须满足
+  `0 <= start_ms <= end_ms <= timeline.duration_ms`。
+- 范围采用半开区间 `[start_ms, end_ms)`。`[0, 100)` 与 `[100, 200)` 首尾相接，
+  不构成重叠。
+- `start_ms == end_ms` 的零长度范围合法，并且不会与其他范围重叠。
+- Python `add_*()` 会立即检查起止顺序和 timeline 边界。Rust 直接构造
+  `TimeRange` 时应遵守同一标准；`AudioDoc::validate()` 会检查 annotation 是否超
+  出 timeline 结束位置。
+- Python 中 Token 的 `start_ms` 和 `end_ms` 必须同时提供或同时省略。带范围的
+  Token 必须完全位于所属 Transcription 或 Speaker annotation 内；添加或整体替换
+  payload 时都会检查。
+
+#### Reference 与 Prediction 来源
+
+- Reference annotation 不携带 source。Python reference API 不接收 source；Rust
+  `push_reference()` 会将 source 设为 `None`，整体验证会拒绝通过直接修改得到的
+  非空 reference source。
+- 每条 Prediction annotation 都必须有 source，而且 source 至少包含一个非空白字
+  符。`""` 和 `"   "` 无效。
+- source 使用原始字符串精确比较，区分大小写，不会自动 trim 或标准化。因此
+  `"asr"`、`"ASR"` 和 `" asr "` 是三个不同来源。
+
+#### 重叠规则
+
+下表适用于 reference，也适用于 prediction 的同一个 source。表中的“允许”只表示
+没有新增的重叠限制，其他范围、source 和 payload 规则仍然有效。
+
+| 组合 | 是否允许重叠 | 分组与说明 |
+| ---- | ------------ | ---------- |
+| Speech ↔ Speech | 不允许 | 所有 Speech 共用一条区间轨道。 |
+| Speech ↔ Speaker | 允许 | Speech 可以覆盖说话人区间。 |
+| Speech ↔ Transcription | 允许 | Speech 可以覆盖转写区间。 |
+| Speaker ↔ Speaker | 同名不允许，不同名允许 | `name` 使用大小写敏感的精确匹配。 |
+| 顶层 Transcription ↔ 顶层 Transcription | 不允许 | 重叠内容应写入同一条 Transcription。 |
+| 顶层 Transcription ↔ 带 transcription 的 Speaker | 不允许 | 避免同一时间范围出现两份转写。 |
+| 顶层 Transcription ↔ 不带 transcription 的 Speaker | 允许 | Speaker 只表达说话人身份。 |
+| 不同 name 且都带 transcription 的 Speaker | 允许 | 用于表达不同说话人的同时说话。 |
+
+`Token`、`Sentence`、`Language` 和 `AcousticEvent` 目前没有新增的集合级重叠规则。
+同一个 prediction source 使用上表；不同 source 可以自由重叠。例如两个 VAD 模型
+可以保存彼此重叠的 Speech 结果。
+
+#### 去重、冲突与原子性
+
+- 内容完全相同的重复插入具有幂等性：返回已有 annotation，不插入第二条。比较会
+  忽略自动生成的 `id`，但会比较 range、source、confidence 和完整 payload。
+- 检测到冲突时会返回错误，不会自动合并、裁剪、拆分、覆盖或移动范围。
+- Python 只能用相同 `kind` 的 payload 整体替换当前 payload。替换会在候选副本上
+  完成全部校验；失败时原 annotation 保持不变。
+- `prediction.relabel_source()` 会先校验改名后的完整 prediction 集合。只要一条冲
+  突，整个重命名失败且不修改任何 annotation。
+
+#### 校验发生的位置
+
+| 入口 | 校验行为 |
+| ---- | -------- |
+| Python `reference/prediction.add_*()` | 添加前检查范围、source、payload 和重叠规则。 |
+| Rust `Timeline::push_reference/push_prediction()` | 幂等插入，并检查 source 与重叠规则。 |
+| Python `annotation.payload = ...` | 使用候选副本进行原子校验。 |
+| Python/Rust source 重命名 | 校验完整候选集合，成功后一次性提交。 |
+| `AudioDoc.validate()` | 重新检查声道、timeline、annotation 边界、source 和集合重叠。 |
+| 数据库读取、插入和更新 | 使用 schema v6，并通过 `AudioDoc.validate()` 拒绝无效文档。 |
+
+Rust 的 `reference` 和 `prediction` 是公开 `Vec`，可以绕过 `push_*()` 直接修改；这
+种用法必须在持久化前调用 `AudioDoc::validate()`。数据库写入也会自动执行同样的整
+体验证。
 
 ### 评测 {id="evaluation"}
 

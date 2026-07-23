@@ -575,7 +575,7 @@ source 约束。
 参考真值集合。Reference annotation 的 `source` 始终为 `None`。Speech 之间不得重
 叠；同名 Speaker 之间不得重叠；顶层 Transcription 之间不得重叠，且不得与携带
 transcription 的 Speaker 重叠。时间范围采用 `[start_ms, end_ms)`，首尾相接不算重
-叠。
+叠。完整规则见[标注校验规范](/asr-data/annotations#validation)。
 
 ## ReferenceAnnotations.add_speech {id="reference-add-speech",tag="method"}
 
@@ -711,7 +711,8 @@ Sentence。Python 目前不提供 Sentence 的创建方法。
 
 模型或处理流程输出的集合。每次添加都必须通过 keyword-only 参数提供非空字符串
 `source`。每个 source 独立应用与 reference 相同的重叠规则；不同 source 可以重
-叠。source 区分大小写且不会自动去除空白。
+叠。source 区分大小写且不会自动去除空白。完整规则见
+[标注校验规范](/asr-data/annotations#validation)。
 
 ## PredictionAnnotations.add_speech {id="prediction-add-speech",tag="method"}
 
@@ -1016,7 +1017,8 @@ Sentence。Python 目前不提供 Sentence 的创建方法。
 
 获取或整体替换标注内容。新 payload 的类型必须与当前 `kind` 一致；Speech 的
 payload 固定为 `None`。替换 Transcription 或 Speaker 时会重新校验 token 时间范围
-和重叠规则；校验失败时原 payload 保持不变。
+和重叠规则；校验失败时原 payload 保持不变。完整规则见
+[标注校验规范](/asr-data/annotations#validation)。
 
 > #### Example
 >
