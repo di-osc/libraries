@@ -10,7 +10,7 @@ menu:
 ---
 
 `asr-data` 用于构建和管理 ASR 数据集，同时提供 Rust 和 Python API。它以
-[`AudioDoc`](/asr-data/api#audio-doc) 为中心，统一组织音频来源、按声道时间轴、参
+[`Audio`](/asr-data/api#audio) 为中心，统一组织音频来源、按声道时间轴、参
 考标注与模型预测，并通过 SQLite 完成持久化和查询。
 
 源码：[di-osc/asr-data](https://github.com/di-osc/asr-data)
@@ -31,63 +31,64 @@ cargo add asr-data
 
 ## 核心概念 {id="concepts"}
 
-下图展示了从音频来源、解码结果到文档标注和数据库持久化的完整关系：
+下图展示了从音频来源、运行时波形到时间轴标注和数据库持久化的完整关系：
 
 <Image
-  src="/asr-data/architecture-hd.png"
-  alt="asr-data 从 AudioSource 到 Audio、AudioChunk、AudioDoc、Timeline 与 Annotation 的数据模型关系图"
-  width="1000"
+  src="/asr-data/architecture.svg"
+  alt="asr-data 从 AudioSource 到 Audio、Waveform、AudioChunk、Timeline 与 TimeSpan 的数据模型关系图"
+  width="1200"
 />
 
 - **音频来源**：[`AudioSource`](/asr-data/api#audio-source) 统一表达
   Path、URL、Bytes、Base64 和 PCM。调用 `probe()` / `aprobe()` 得到不含样本的
-  [`AudioInfo`](/asr-data/api#audio-info)，调用 `load()` / `aload()` 得到完整的
-  [`Audio`](/asr-data/api#audio)，调用 `stream()` / `astream()` 则持续产生
-  [`AudioChunk`](/asr-data/api#audio-chunk)。
-- **解码后的音频**：[`Audio`](/asr-data/api#audio) 保存浮点 `Samples` 和
-  `AudioFormat`；[`AudioChunk`](/asr-data/api#audio-chunk) 额外记录 `offset_ms`
-  与 `is_final`。两者都支持声道提取、重采样和切片。
-- **可持久化文档**：[`AudioDoc`](/asr-data/api#audio-doc) 引用原始
-  [`AudioSource`](/asr-data/api#audio-source)，并保存
-  [`AudioInfo`](/asr-data/api#audio-info)、稳定 ID、业务元数据和自动创建的各声道
-  [`Timeline`](/asr-data/api#timeline)。解码后的
-  [`Audio`](/asr-data/api#audio) 与 [`AudioChunk`](/asr-data/api#audio-chunk) 不
-  会直接存入 [`AudioDoc`](/asr-data/api#audio-doc)。
-- **Timeline 与 Annotation**：每个 [`Timeline`](/asr-data/api#timeline) 具有
-  channel 和 duration，并将 annotation 分为不带来源的 `Reference` 与必须提供
+  [`AudioInfo`](/asr-data/api#audio-info)。`open()` 创建延迟解码的
+  [`Audio`](/asr-data/api#audio)，`load()` 则创建已加载完整波形的 `Audio`。
+- **中心音频对象**：[`Audio`](/asr-data/api#audio) 同时拥有来源、`info`、稳定
+  ID、业务元数据和自动创建的各声道 [`Timeline`](/asr-data/api#timeline)。
+  `as_waveform()` 在需要时返回完整 [`Waveform`](/asr-data/api#waveform)；
+  `stream()` / `astream()` 按顺序产生 [`AudioChunk`](/asr-data/api#audio-chunk)。
+- **波形视图**：[`Waveform`](/asr-data/api#waveform) 是可重采样、切片和声道转换
+  的浮点样本；`Timeline.as_waveform()` 与 `TimeSpan.as_waveform()` 会直接返回对应
+  声道或时间范围的波形，不需要模型额外接收 `AudioSource`。
+- **Timeline 与 TimeSpan**：每个 [`Timeline`](/asr-data/api#timeline) 具有
+  channel 和 duration，并将标注分为不带来源的 `Reference` 与必须提供
   `source` 的 `Prediction`。
-- **Annotation payload**：[`Annotation`](/asr-data/api#annotation) 保存
-  range 和 confidence，其 payload 可以是
-  `Speech`、[`Speaker`](/asr-data/api#speaker) 或
+- **TimeSpan 与 Annotation**：[`TimeSpan`](/asr-data/api#time-span) 保存
+  `start_ms`、`end_ms`、`confidence` 和 `source`，其 `annotation` 可以是
+  [`AudioActivity`](/asr-data/api#audio-activity)、[`Speaker`](/asr-data/api#speaker) 或
   [`Transcription`](/asr-data/api#transcription)。[`Speaker`](/asr-data/api#speaker)
   使用 `name` 标识说话人，并可包含
   [`Transcription`](/asr-data/api#transcription)；[`Transcription`](/asr-data/api#transcription)
   保存 text、language、confidence 以及细粒度 [`Token`](/asr-data/api#token)。
-- **数据库**：[`AudioDB`](/asr-data/api#audio-db) 将完整的
-  [`AudioDoc`](/asr-data/api#audio-doc) 持久化到可查询的 SQLite 数据库。
+- **数据库**：[`AudioDB`](/asr-data/api#audio-db) 持久化 `Audio` 的来源、信息、
+  metadata、timeline 和标注；运行时波形不写入数据库，读取后仍可按需加载。
 
 ## 快速开始 {id="quickstart"}
 
 下面的示例创建一条音频记录，加入参考说话人标注和模型预测，然后写入数据库：
 
 ```python
-from asr_data import AudioDB, AudioDoc, AudioSource
-from asr_data.annotation import Speaker, Transcription
+from asr_data import AudioDB, AudioSource
+from asr_data.annotation import AudioActivity, Speaker, Transcription
 
 # 创建来源
 URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
-source = AudioSource.from_url(URL)
-
-# 探测格式并自动创建时间轴
-doc = AudioDoc(source, id="example-001")
-doc.metadata["split"] = "train"
+audio = AudioSource.from_url(URL).open(id="example-001")
+audio.metadata["split"] = "train"
 
 # 获取自动创建的时间线
-timeline = doc.timeline("mono")
+timeline = audio.timeline("mono")
 end_ms = timeline.duration_ms
 
+# 添加声音活动标注；event 为空时表示类别未知
+timeline.reference.annotate_span(
+    0,
+    end_ms,
+    AudioActivity(event="speech"),
+)
+
 # 添加说话人标注
-timeline.reference.add_speaker(
+timeline.reference.annotate_span(
     0,
     end_ms,
     Speaker(
@@ -97,7 +98,7 @@ timeline.reference.add_speaker(
 )
 
 # 添加模型预测
-timeline.prediction.add_transcription(
+timeline.prediction.annotate_span(
     0,
     end_ms,
     Transcription("甚至出现交易几乎停滞的情况", language="zh", confidence=0.96),
@@ -106,10 +107,10 @@ timeline.prediction.add_transcription(
 
 # 数据库
 db = AudioDB.create("dataset.db")
-if doc.id in db:
-    db.delete(doc.id)
-db.insert(doc)
-loaded = db[doc.id]
+if audio.id in db:
+    db.delete(audio.id)
+db.insert(audio)
+loaded = db[audio.id]
 loaded_timeline = loaded.timeline("mono")
 print(loaded_timeline.reference.transcript().text)
 print(loaded_timeline.prediction.transcript("qwen-asr").text)

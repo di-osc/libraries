@@ -10,18 +10,19 @@ menu:
   - ['流式加载', 'streaming']
 ---
 
-音频处理从 [`AudioSource`](/asr-data/api#audio-source) 开始。它描述数据来自哪里
-；解码后得到完整的 [`Audio`](/asr-data/api#audio)，流式读取则持续产生
-[`AudioChunk`](/asr-data/api#audio-chunk)。来源、完整音频和流式分块使用相同的样
-本约定，因此可以复用后续处理代码。
+音频处理从 [`AudioSource`](/asr-data/api#audio-source) 开始。它只描述数据来自哪
+里；`open()` / `load()` 创建中心 [`Audio`](/asr-data/api#audio)，模型再通过
+`Audio.as_waveform()`、`Timeline.as_waveform()` 或 `TimeSpan.as_waveform()` 取得
+所需样本。流式读取由 `Audio.stream()` 持续产生
+[`AudioChunk`](/asr-data/api#audio-chunk)。
 
 右侧 Example 按页面顺序连续执行，后面的示例会直接使用前面创建的变量。
 
 ## 音频来源 {id="source"}
 
 `AudioSource` 是一个尚未解码的音频来源描述，而不是音频样本本身。创建来源时通常不
-读取文件、不发起网络请求，也不执行解码；真正的 I/O 发生在 `probe()`、
-`load()`、`stream()` 等方法被调用时。
+读取文件、不发起网络请求，也不执行解码；真正的 I/O 发生在 `probe()`、`open()`、
+`load()` 或后续波形访问时。
 
 > #### Example
 >
@@ -78,29 +79,36 @@ menu:
 | `duration_ms`   | 根据帧数和采样率计算的浮点毫秒时长 |
 | `source_format` | 编码、采样率和声道组成的原始格式   |
 
-异步程序使用 `await source.aprobe()`。URL 来源仍需要下载编码数据，但探测过程不会
-执行样本解码；需要波形时再调用 `load()` 或 `aload()`。
+异步程序使用 `await source.aprobe()`。URL 来源仍需要读取编码数据来探测容器，但
+不会把整段音频转换为浮点样本。
 
 ## 加载音频 {id="load"}
 
-调用 `source.load()` 会同步读取并解码完整来源，返回一个 `Audio`。异步程序使用
-`await source.aload()`；两者的参数和结果一致。
+`source.open()` 探测来源并创建尚未保存波形的 `Audio`；`source.load()` 创建同样
+的对象，同时完成整段解码。异步程序分别使用 `await source.aopen()` 和
+`await source.aload()`。
 
 > #### Example
 >
 > ```python
-> audio = source.load(sample_rate=16_000, mono=True)
+> audio = source.open(id="example-001")
+> waveform = audio.as_waveform().to_mono().resample(16_000)
 >
-> print(audio.sample_rate, audio.channels)
-> print(audio.frame_count, audio.duration_ms)
-> print(audio.samples.dtype, audio.source_format)
+> print(audio.info.duration_ms, audio.is_loaded)
+> print(waveform.sample_rate, waveform.channels)
+> print(waveform.samples.dtype, waveform.source_format)
 > ```
 
-加载时可以通过 `sample_rate` 直接重采样，通过 `mono=True` 将多声道混合为单声道。
-这适合 ASR 或 VAD 等要求固定输入格式的流程，可以避免先加载原格式、再单独转换的中
-间步骤。省略这两个参数时保留来源的采样率和声道数。
+第一次调用 `as_waveform()` 会在需要时解码并缓存完整波形，之后
+`audio.is_loaded` 为 `True`。`audio.unload()` 只释放运行时样本，不会删除来源、
+`info`、metadata、timeline 或标注。
 
-`Audio` 提供以下基础信息：
+| 对象 | 保存内容 | 典型操作 |
+| --- | --- | --- |
+| `Audio` | 来源、info、ID、metadata、timelines 和可选运行时波形 | 标注、流式读取、持久化 |
+| `Waveform` | `float32` 样本、采样率、声道与原始格式 | 重采样、混声道、切片、播放 |
+
+`Waveform` 提供以下基础信息：
 
 | 属性            | 含义                                           |
 | --------------- | ---------------------------------------------- |
@@ -116,13 +124,13 @@ timeline 或 annotation 时，才需要按相应 API 的规则转换为毫秒整
 
 ## 音频处理 {id="processing"}
 
-`Audio` 的转换方法不会原地修改已有对象，而是返回新的 `Audio`。这种设计可以保留原
+`Waveform` 的转换方法不会原地修改已有对象，而是返回新的 `Waveform`。这种设计可以保留原
 始解码结果，并安全地从同一份音频产生不同采样率、声道或时间范围的版本。
 
 > #### Example
 >
 > ```python
-> processed = audio.to_mono().resample(16_000)
+> processed = audio.as_waveform().to_mono().resample(16_000)
 > clip = processed.slice_ms(0, 2_000)
 > parts = processed.split_at_low_energy(1_000)
 >
@@ -154,20 +162,24 @@ timeline 或 annotation 时，才需要按相应 API 的规则转换为毫秒整
 > #### Example
 >
 > ```python
-> for chunk in source.stream(500, sample_rate=16_000, mono=True):
->     print(chunk.offset_ms, chunk.duration_ms, chunk.is_final)
+> for chunk in audio.stream(chunk_size_ms=500):
+>     model_input = chunk.as_waveform("mono").resample(16_000)
+>     print(chunk.offset_ms, chunk.end_ms, chunk.is_final, model_input.frame_count)
 > ```
 
-`source.stream(chunk_size_ms=...)` 返回同步迭代器，`source.astream(...)` 返回异
-步迭代器。`chunk_size_ms` 是目标分块时长；最后一块可能更短。加载阶段同样可以指定
-`sample_rate` 和 `mono`，因此每个 chunk 到达时已经是下游需要的格式。
+`audio.stream(chunk_size_ms=...)` 返回同步迭代器，`audio.astream(...)` 返回异步
+迭代器。`chunk_size_ms` 是目标分块时长；最后一块可能更短。同一个 `Audio` 同一时
+刻只允许一个活动流。完整消费后，所有 chunk 会合并为该 `Audio` 的运行时波形并令
+`is_loaded=True`；提前 `close()` 则保持未加载状态。
 
 每个 `AudioChunk` 包含：
 
 - `offset_ms`：本块相对整段音频起点的偏移。
+- `end_ms`：本块在整段音频中的全局结束位置。
 - `duration_ms`：本块的实际时长。
 - `is_final`：是否为该来源的最后一块。
 - `samples`、`sample_rate`、`channels` 和 `frame_count`：本块的音频数据与格式。
 
-`AudioChunk` 也支持 `to_mono()`、`channel()`、`resample()` 和 `slice_ms()`。同步
-迭代天然按消费速度拉取下一块；异步迭代则更适合网络服务和异步推理管线。
+`AudioChunk.to_global_span()` 可以把模型返回的 chunk 内相对范围换算为整段音频的
+全局范围；`chunk.timeline(channel)` 返回父 `Audio` 的完整 timeline，而不是只覆盖
+当前 chunk 的临时时间轴。这样流式模型可以为过去的一段时间补写标注。
