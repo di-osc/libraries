@@ -9,6 +9,7 @@
     "AudioFormat": "/asr-data/api#audio-properties",
     "AudioInfo": "/asr-data/api#audio-info",
     "AudioSource": "/asr-data/api#audio-source",
+    "AudioStream": "/asr-data/api#audio-stream",
     "DatasetEvaluation": "/asr-data/api#dataset-evaluation",
     "DatasetActivityEvaluation": "/asr-data/api#dataset-evaluation",
     "DatasetActivityEventEvaluation": "/asr-data/api#dataset-evaluation",

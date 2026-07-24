@@ -11,18 +11,17 @@ menu:
 ---
 
 音频处理从 [`AudioSource`](/asr-data/api#audio-source) 开始。它只描述数据来自哪
-里；`open()` / `load()` 创建中心 [`Audio`](/asr-data/api#audio)，模型再通过
-`Audio.as_waveform()`、`Timeline.as_waveform()` 或 `TimeSpan.as_waveform()` 取得
-所需样本。流式读取由 `Audio.stream()` 持续产生
-[`AudioChunk`](/asr-data/api#audio-chunk)。
+里；`load()` 产生完整 [`Audio`](/asr-data/api#audio)，`stream()` 产生与其平级的
+[`AudioStream`](/asr-data/api#audio-stream)。模型通过 Audio、AudioStream、
+Timeline、TimeSpan 或 AudioChunk 的波形视图取得所需样本。
 
 右侧 Example 按页面顺序连续执行，后面的示例会直接使用前面创建的变量。
 
 ## 音频来源 {id="source"}
 
 `AudioSource` 是一个尚未解码的音频来源描述，而不是音频样本本身。创建来源时通常不
-读取文件、不发起网络请求，也不执行解码；真正的 I/O 发生在 `probe()`、`open()`、
-`load()` 或后续波形访问时。
+读取文件、不发起网络请求，也不执行解码；真正的 I/O 发生在 `probe()`、`load()`
+或 `stream()` 时。
 
 > #### Example
 >
@@ -84,28 +83,28 @@ menu:
 
 ## 加载音频 {id="load"}
 
-`source.open()` 探测来源并创建尚未保存波形的 `Audio`；`source.load()` 创建同样
-的对象，同时完成整段解码。异步程序分别使用 `await source.aopen()` 和
-`await source.aload()`。
+`source.load()` 完整解码来源，创建具有最终时长 timeline 的 `Audio`。异步程序
+使用 `await source.aload()`，参数和返回结果一致。如果不需要复用或单独保存
+AudioSource，也可以直接使用 `Audio.from_path()`、`from_url()`、`from_bytes()`、
+`from_base64()` 或 `from_pcm()`。
 
 > #### Example
 >
 > ```python
-> audio = source.open(id="example-001")
+> from asr_data import Audio
+>
+> audio = Audio.from_url(URL, id="example-001")
 > waveform = audio.as_waveform().to_mono().resample(16_000)
 >
-> print(audio.info.duration_ms, audio.is_loaded)
+> print(audio.info.duration_ms, audio.timeline("mono").duration_ms)
 > print(waveform.sample_rate, waveform.channels)
 > print(waveform.samples.dtype, waveform.source_format)
 > ```
 
-第一次调用 `as_waveform()` 会在需要时解码并缓存完整波形，之后
-`audio.is_loaded` 为 `True`。`audio.unload()` 只释放运行时样本，不会删除来源、
-`info`、metadata、timeline 或标注。
-
 | 对象 | 保存内容 | 典型操作 |
 | --- | --- | --- |
-| `Audio` | 来源、info、ID、metadata、timelines 和可选运行时波形 | 标注、流式读取、持久化 |
+| `Audio` | 完整波形、来源、info、ID、metadata 和最终时长 timelines | 标注、全局处理、持久化 |
+| `AudioStream` | 已接收波形、来源、info、metadata 和动态增长的 timelines | 边接收边推理与标注 |
 | `Waveform` | `float32` 样本、采样率、声道与原始格式 | 重采样、混声道、切片、播放 |
 
 `Waveform` 提供以下基础信息：
@@ -150,6 +149,17 @@ timeline 或 annotation 时，才需要按相应 API 的规则转换为毫秒整
 | `split_at_low_energy(max_duration_ms)` | 将长音频优先拆在低能量位置                |
 | `display(...)`                         | 在 IPython 或 Notebook 中播放指定时间范围 |
 
+所有能够调用 `as_waveform()` 的对象都直接提供相同签名的 `display()`：
+[`Audio`](/asr-data/api#audio)、[`AudioStream`](/asr-data/api#audio-stream)、
+[`AudioChunk`](/asr-data/api#audio-chunk)、[`Timeline`](/asr-data/api#timeline) 和
+[`TimeSpan`](/asr-data/api#time-span)。因此在 Notebook 中不需要先手动取出
+`Waveform`：
+
+```python
+audio.display(end_ms=2_000)
+timeline.display(start_ms=500, end_ms=1_500)
+```
+
 多声道样本按 frame 交错保存，`frame_count` 表示每个声道的帧数，而不是 `samples`
 数组的元素总数。`slice_ms()` 和低能量切分会保留声道布局；需要单声道时应显式调用
 `to_mono()`。
@@ -162,15 +172,33 @@ timeline 或 annotation 时，才需要按相应 API 的规则转换为毫秒整
 > #### Example
 >
 > ```python
-> for chunk in audio.stream(chunk_size_ms=500):
+> from asr_data import AudioStream
+>
+> stream = AudioStream.from_url(
+>     URL, chunk_size_ms=500, id="example-stream"
+> )
+>
+> for chunk in stream:
 >     model_input = chunk.as_waveform("mono").resample(16_000)
->     print(chunk.offset_ms, chunk.end_ms, chunk.is_final, model_input.frame_count)
+>     timeline = stream.timeline("mono")
+>     print(chunk.end_ms, timeline.duration_ms, model_input.frame_count)
+>
+> streamed_audio = stream.to_audio()
 > ```
 
-`audio.stream(chunk_size_ms=...)` 返回同步迭代器，`audio.astream(...)` 返回异步
-迭代器。`chunk_size_ms` 是目标分块时长；最后一块可能更短。同一个 `Audio` 同一时
-刻只允许一个活动流。完整消费后，所有 chunk 会合并为该 `Audio` 的运行时波形并令
-`is_loaded=True`；提前 `close()` 则保持未加载状态。
+`source.stream(chunk_size_ms=...)` 与 `AudioStream.from_*()` 都返回
+`AudioStream`。同一个对象既可使用普通
+`for`，也可使用 `async for`，但一次流不能混用两种消费方式。`chunk_size_ms` 是
+目标分块时长，最后一块可能更短。
+
+AudioStream 创建时 timeline 时长为 `0`。每次迭代会先追加样本、把所有 timeline
+延长到 `chunk.end_ms`，再返回 chunk，因此模型可以立即为当前块或任何已经到达的
+历史范围添加标注。尚未接收的未来范围仍会被范围校验拒绝。
+
+`stream.as_waveform()` 返回当前累计波形；完整消费后 `is_complete` 为 `True`，
+此时 `to_audio()` 会复用已经解码的样本、metadata、timeline 和标注创建 `Audio`，
+不会重新读取来源。提前 `close()` 会令 `is_closed` 为 `True`，且不能调用
+`to_audio()`。
 
 每个 `AudioChunk` 包含：
 
@@ -180,6 +208,6 @@ timeline 或 annotation 时，才需要按相应 API 的规则转换为毫秒整
 - `is_final`：是否为该来源的最后一块。
 - `samples`、`sample_rate`、`channels` 和 `frame_count`：本块的音频数据与格式。
 
-`AudioChunk.to_global_span()` 可以把模型返回的 chunk 内相对范围换算为整段音频的
-全局范围；`chunk.timeline(channel)` 返回父 `Audio` 的完整 timeline，而不是只覆盖
-当前 chunk 的临时时间轴。这样流式模型可以为过去的一段时间补写标注。
+`AudioChunk.to_global_span()` 可以把模型返回的 chunk 内相对范围换算为全局范围；
+`chunk.timeline(channel)` 与父 AudioStream 返回同一个正在增长的 timeline，而不是
+只覆盖当前 chunk 的临时时间轴。这样流式模型可以为过去的一段时间补写标注。
