@@ -30,16 +30,6 @@ menu:
   - ['normalize_zh', 'normalize-zh']
 ---
 
-所有公开 Python 类、方法、属性和顶层函数都提供运行时 docstring。在解释器、Jupyter
-或 IDE 中可以直接查看与本页一致的参数、返回值、异常和示例：
-
-```python
-from asr_data import AudioDB, AudioSource
-
-help(AudioSource.load)
-print(AudioDB.eval.__doc__)
-```
-
 ## AudioSource {id="audio-source",tag="class"}
 
 描述尚未解码的音频来源。来源可以是文件路径、URL、编码字节、base64 字符串或 PCM
@@ -422,16 +412,6 @@ metadata。
 从来源创建完整音频记录。构造时加载波形、保存 `info`，并自动创建全部原始声道的
 timeline。通常优先使用 [`AudioSource.load()`](#audio-source-load)。
 
-> #### Example
->
-> ```python
-> from asr_data import AudioSource
->
-> URL = "https://deepasset.oss-cn-beijing.aliyuncs.com/example.wav"
-> audio = AudioSource.from_url(URL).load(id="call-001")
-> print(audio.id, audio.source.url)
-> print(audio.info.duration_ms, audio.timelines.keys())
-> ```
 
 | Name     | Description                                    |
 | -------- | ---------------------------------------------- |
