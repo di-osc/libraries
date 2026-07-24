@@ -180,7 +180,7 @@ timeline.display(start_ms=500, end_ms=1_500)
 >
 > for chunk in stream:
 >     model_input = chunk.as_waveform("mono").resample(16_000)
->     timeline = stream.timeline("mono")
+>     timeline = chunk.timeline("mono")
 >     print(chunk.end_ms, timeline.duration_ms, model_input.frame_count)
 >
 > streamed_audio = stream.to_audio()
@@ -202,12 +202,19 @@ AudioStream 创建时 timeline 时长为 `0`。每次迭代会先追加样本、
 
 每个 `AudioChunk` 包含：
 
+- `id`、`source`、`metadata` 和 `timelines`：与父 `AudioStream` 共享的文档上下文。
+- `index`：本块在流中从 `0` 开始的顺序。
+- `info`：只描述当前块的采样率、声道、帧数、时长和来源格式。
 - `offset_ms`：本块相对整段音频起点的偏移。
 - `end_ms`：本块在整段音频中的全局结束位置。
 - `duration_ms`：本块的实际时长。
 - `is_final`：是否为该来源的最后一块。
-- `samples`、`sample_rate`、`channels` 和 `frame_count`：本块的音频数据与格式。
 
-`AudioChunk.to_global_span()` 可以把模型返回的 chunk 内相对范围换算为全局范围；
+chunk 本身不重复提供 `samples`、`resample()`、`slice_ms()` 等 Waveform API。
+需要当前块样本或音频变换时，先调用 `chunk.as_waveform()`。
+
+`AudioChunk.to_timeline_range()` 可以把模型返回的 chunk 内相对范围换算为全局范围；
 `chunk.timeline(channel)` 与父 AudioStream 返回同一个正在增长的 timeline，而不是
-只覆盖当前 chunk 的临时时间轴。这样流式模型可以为过去的一段时间补写标注。
+只覆盖当前 chunk 的临时时间轴。已返回 chunk 的波形和 `info` 始终固定，但它持有的
+metadata 和 timeline 是共享的，因此之后的迭代与标注仍然对旧 chunk 可见。这样流式
+模型可以为过去的一段时间补写标注。

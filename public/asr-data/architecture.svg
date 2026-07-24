@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1680" viewBox="0 0 1400 1680" role="img" aria-labelledby="title desc">
   <title id="title">asr-data 核心概念</title>
-  <desc id="desc">AudioSource 分别通过 load 和 stream 创建同级的 Audio 与 AudioStream；AudioStream 随 AudioChunk 迭代增长，并可在完成后转换为 Audio。两者都拥有 Waveform、Timeline、TimeSpan 和 Annotation。</desc>
+  <desc id="desc">AudioSource 分别通过 load 和 stream 创建同级的 Audio 与 AudioStream；AudioChunk 保存当前块的局部波形并共享 AudioStream 的全局时间轴；AudioStream 可在完成后转换为 Audio。</desc>
   <defs>
     <marker id="a-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#39a9cc"/></marker>
     <marker id="a-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#13b4a7"/></marker>
@@ -74,7 +74,8 @@
   <rect class="node teal" x="1050" y="620" width="295" height="108"/>
   <rect class="pill p-teal" x="1141" y="606" width="113" height="29"/><text class="code" x="1197" y="626">iterate</text>
   <text class="name" x="1197" y="672">AudioChunk</text>
-  <text class="detail" x="1197" y="704">offset_ms · end_ms · is_final</text>
+  <text class="detail" x="1197" y="697">局部波形 · index · offset_ms</text>
+  <text class="detail" x="1197" y="720">共享 metadata 与全局时间轴</text>
   <path class="line-teal" d="M1030 525c52 34 101 68 134 95"/>
 
   <rect class="node purple" x="480" y="660" width="430" height="120"/>
@@ -84,7 +85,7 @@
   <path class="line-purple" d="M545 525c14 56 53 103 99 135"/>
   <path class="line-teal" d="M950 525c-30 61-93 110-163 135"/>
   <path class="line-teal dash" d="M1050 684H910"/>
-  <rect class="pill p-teal" x="934" y="669" width="93" height="29"/><text class="code" x="980" y="689">timeline</text>
+  <rect class="pill p-teal" x="918" y="669" width="125" height="29"/><text class="code" x="980" y="689">shared timeline</text>
 
   <g aria-label="数据库">
     <path class="line-purple" d="M455 525C360 607 235 704 128 782"/>

@@ -118,7 +118,7 @@ S16LE 字节。`load()` 解码为完整 [`Audio`](#audio)，`stream()` 创建逐
 | Name           | Description                    |
 | -------------- | ------------------------------ |
 | _keyword-only_ |                                |
-| `id`           | 可选稳定 ID。~~Optional[str]~~ |
+| `id`           | 可选的文档 ID。~~Optional[str]~~ |
 | **RETURNS**    | 中心音频对象。~~Audio~~        |
 
 异步程序使用 `await source.aload(...)`。
@@ -169,7 +169,7 @@ S16LE 字节。`load()` 解码为完整 [`Audio`](#audio)，`stream()` 创建逐
 | --------------- | -------------------------------------------------- |
 | `chunk_size_ms` | 每块的目标时长，默认为 `100`。~~int~~              |
 | _keyword-only_  |                                                    |
-| `id`            | 可选稳定 ID。~~Optional[str]~~                     |
+| `id`            | 可选的文档 ID。~~Optional[str]~~                   |
 | **RETURNS**     | 可同步或异步消费的音频流。~~AudioStream~~          |
 
 同一个 `AudioStream` 可以使用普通 `for` 或 `async for`，但一次流实例不能混合同步与
@@ -386,24 +386,34 @@ metadata。
 
 ## AudioChunk {id="audio-chunk",tag="class"}
 
-流式解码产生的音频块。它提供与 [`Waveform`](#waveform) 相同的样本、格式以及
-`to_mono()`、 `channel()`、`resample()`、`slice_ms()` 变换，并额外提供以下属性。
+流式解码产生的当前局部音频块。它与父 [`AudioStream`](#audio-stream) 共享文档
+`id`、`source`、可修改 `metadata` 和全局 `timelines`，但 `info` 与
+`as_waveform()` 只描述当前块。旧 chunk 的局部波形保持不变，共享 timeline 则会随
+流继续增长。
 
-| Name        | Description                         |
-| ----------- | ----------------------------------- |
-| `offset_ms` | 当前块相对原音频的起始偏移。~~int~~ |
-| `end_ms`    | 当前块在完整音频中的结束位置。~~int~~ |
-| `is_final`  | 是否为流中的最后一块。~~bool~~      |
+| Name          | Description                                                |
+| ------------- | ---------------------------------------------------------- |
+| `id`          | 与父 AudioStream 相同的文档 ID。~~str~~                    |
+| `source`      | 与父 AudioStream 相同的 AudioSource。~~AudioSource~~       |
+| `info`        | 只描述当前块的音频信息。~~AudioInfo~~                      |
+| `metadata`    | 与父 AudioStream 共享的字典。~~Dict[str, JsonValue]~~      |
+| `timelines`   | 与父 AudioStream 共享的全局时间轴。~~Dict[str, Timeline]~~ |
+| `index`       | 当前块从零开始的流内序号。~~int~~                          |
+| `offset_ms`   | 当前块相对原音频的起始偏移。~~int~~                        |
+| `end_ms`      | 当前块在完整音频中的结束位置。~~int~~                      |
+| `duration_ms` | 当前块时长。~~float~~                                      |
+| `is_final`    | 是否为流中的最后一块。~~bool~~                             |
 
 `as_waveform(channel=None)` 返回当前块的波形；`timeline(channel)` 返回父
 [`AudioStream`](#audio-stream) 当前增长到的全局时间轴；
-`to_global_span(start_ms, end_ms)` 把块内相对范围转换为流中的全局范围。
+`to_timeline_range(start_ms, end_ms)` 把块内相对范围转换为共享时间轴中的全局范围。
 `display(start_ms=None, end_ms=None, autoplay=False)` 直接播放当前 chunk，时间参数
-使用 chunk 内的局部坐标。
+使用 chunk 内的局部坐标。波形变换统一通过 `chunk.as_waveform()` 返回的
+[`Waveform`](#waveform) 完成。
 
 ## Audio {id="audio",tag="class"}
 
-完整音频、时间轴与标注的中心对象。它包含稳定 ID、[`AudioSource`](#audio-source)、
+完整音频、时间轴与标注的中心对象。它包含文档 ID、[`AudioSource`](#audio-source)、
 [`AudioInfo`](#audio-info)、业务元数据、各声道 [`Timeline`](#timeline) 和完整
 运行时 [`Waveform`](#waveform)。数据库不会持久化浮点样本。
 
@@ -426,7 +436,7 @@ timeline。通常优先使用 [`AudioSource.load()`](#audio-source-load)。
 | Name     | Description                                    |
 | -------- | ---------------------------------------------- |
 | `source` | 音频来源。~~AudioSource~~                      |
-| `id`     | 稳定业务 ID；省略时自动生成。~~Optional[str]~~ |
+| `id`     | 文档 ID；省略时自动生成。~~Optional[str]~~ |
 
 单声道创建 `mono`；双声道创建 `left` 和 `right`；更多声道继续以 `2`、`3` 等
 编号。每条 timeline 的整数毫秒时长由 `info` 向上取整得到。异步程序使用
@@ -1048,7 +1058,7 @@ prediction source 中不得重叠。
 
 | Name            | Description                                     |
 | --------------- | ----------------------------------------------- |
-| `name`          | 说话人名称或稳定业务标识。~~str~~               |
+| `name`          | 说话人名称或业务标识。~~str~~                   |
 | _keyword-only_  |                                                 |
 | `transcription` | 该次发话的完整转写。~~Optional[Transcription]~~ |
 | `confidence`    | 可选说话人识别置信度。~~Optional[float]~~       |

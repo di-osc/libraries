@@ -44,12 +44,13 @@ cargo add asr-data
   [`AudioInfo`](/asr-data/api#audio-info)。`load()` 创建完整
   [`Audio`](/asr-data/api#audio)，`stream()` 创建与其平级、持续增长的
   [`AudioStream`](/asr-data/api#audio-stream)。
-- **中心音频对象**：[`Audio`](/asr-data/api#audio) 同时拥有来源、`info`、稳定
+- **中心音频对象**：[`Audio`](/asr-data/api#audio) 同时拥有来源、`info`、文档
   ID、业务元数据和自动创建的各声道 [`Timeline`](/asr-data/api#timeline)。
   `as_waveform()` 返回完整 [`Waveform`](/asr-data/api#waveform)。
 - **流式音频对象**：`AudioStream` 拥有与 Audio 一致的来源、info、ID、metadata
   和 timelines，但 timeline 会随着 [`AudioChunk`](/asr-data/api#audio-chunk)
-  迭代增长。完整消费后使用 `to_audio()` 转为 Audio。
+  迭代增长。每个 chunk 只保留自己的局部波形和 info，同时共享流的文档上下文与
+  全局 timeline；完整消费后使用 `to_audio()` 转为 Audio。
 - **波形视图**：[`Waveform`](/asr-data/api#waveform) 是可重采样、切片和声道转换
   的浮点样本；`Timeline.as_waveform()` 与 `TimeSpan.as_waveform()` 会直接返回对应
   声道或时间范围的波形，不需要模型额外接收 `AudioSource`。

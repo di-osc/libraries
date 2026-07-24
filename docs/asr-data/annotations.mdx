@@ -15,7 +15,7 @@ menu:
 ## 音频 {id="document"}
 
 [`Audio`](/asr-data/api#audio) 是音频、时间轴与标注的共同所有者。它把原始
-[`AudioSource`](/asr-data/api#audio-source)、`info`、稳定 ID、业务元数据、运行时
+[`AudioSource`](/asr-data/api#audio-source)、`info`、文档 ID、业务元数据、运行时
 波形和多个声道 timeline 组织为一个对象。
 
 > #### Example
@@ -40,7 +40,7 @@ menu:
 | `metadata`   | split、语言、来源、业务标签等文档级信息          |
 | `timelines`  | 按声道保存的时间轴及其 reference/prediction 标注 |
 
-业务系统应尽量提供稳定且唯一的 `id`；省略时库会自动生成 ID。`metadata` 是普通字
+业务系统应尽量提供唯一且固定的 `id`；省略时库会自动生成 ID。`metadata` 是普通字
 典，不用于保存 annotation。
 
 ## 时间轴 {id="timeline"}
