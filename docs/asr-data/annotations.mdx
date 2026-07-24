@@ -367,6 +367,9 @@ annotation。
 > reference_text = timeline.reference.transcript()
 > predicted_text = timeline.prediction.transcript("qwen-asr")
 > items = timeline.prediction.by_source("qwen-asr")
+> texts = [item.text for item in timeline.transcriptions]
+> events = [item.event for item in timeline.activities]
+> speakers = [item.name for item in timeline.speakers]
 >
 > print(reference_text.text)
 > print(predicted_text.text)
@@ -384,7 +387,16 @@ annotation。
 | `prediction.remove_by_source(source)` | 删除指定来源的全部 prediction    |
 | `reference.spans`                     | 返回全部 reference TimeSpan      |
 | `prediction.spans`                    | 返回全部 prediction TimeSpan     |
+| `timeline.transcriptions`             | 直接返回全部顶层 Transcription   |
+| `timeline.activities`                 | 直接返回全部顶层 AudioActivity   |
+| `timeline.speakers`                   | 直接返回全部顶层 Speaker         |
 | `audio.validate()`                    | 检查音频、时间轴、范围和来源约束 |
+
+三个 `timeline.*` 类型属性合并 reference 与 prediction，并直接返回 annotation
+payload，不返回 TimeSpan。需要标注 ID、时间范围或 prediction source 时，继续使用
+`reference.spans`、`prediction.spans` 或 `prediction.by_source()`。Timeline 暂不
+提供顶层 `tokens`、`sentences`、`languages` 属性；Token 与 language 从
+Transcription 中读取。
 
 `transcript()` 会把 Transcription annotation 和带 transcription 的
 Speaker annotation 按开始时间组合为

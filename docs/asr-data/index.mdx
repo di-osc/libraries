@@ -67,6 +67,10 @@ cargo add asr-data
   保存 text、language、confidence 以及细粒度 [`Token`](/asr-data/api#token)。
 - **数据库**：[`AudioDB`](/asr-data/api#audio-db) 持久化 `Audio` 的来源、信息、
   metadata、timeline 和标注；运行时波形不写入数据库，读取后仍可按需加载。
+- **数据集**：[`AudioDataset`](/asr-data/api#audio-dataset) 在 AudioDB 之上增加
+  名称、版本和许可证，并可通过
+  [`from_modelscope()`](/asr-data/database#audio-dataset-modelscope) 下载完整
+  ModelScope 仓库，只读打开其中可选的 `train.db`、`val.db`、`test.db`。
 
 ## 快速开始 {id="quickstart"}
 
