@@ -1,0 +1,230 @@
+---
+title: Python API 参考
+teaser: Python 公开类、方法与实用示例
+version: 0.1.3
+section: vad-burn
+menu:
+  - ['VadOptions', 'vad-options']
+  - ['VadSegment', 'vad-segment']
+  - ['FsmnVadModel', 'fsmn-vad-model']
+  - ['FsmnVadStream', 'fsmn-vad-stream']
+  - ['VadDetection 与 VadTiming', 'fsmn-results']
+  - ['FireRedVadModel', 'firered-vad-model']
+  - ['FireRedVadStream', 'firered-vad-stream']
+  - ['FireRed 结果与计时', 'firered-results']
+  - ['顶层导出', 'python-exports']
+---
+
+本页只列出 Python API。Rust 类型、异步加载和底层前向接口见
+[Rust API 参考](/vad-burn/api)。所有推理入口接收 16 kHz 单声道、归一化浮点 PCM
+sequence；输入会复制到 Rust，推理期间会释放 GIL。
+
+## VadOptions {id="vad-options",tag="class"}
+
+所有属性可读写，构造参数都有默认值。
+
+| Property         | Default | Description                                  |
+| ---------------- | ------: | -------------------------------------------- |
+| `threshold`      | `0.6`   | 语音判定阈值；FireRed 中非正值使用 `0.4`。   |
+| `min_speech_ms`  | `250`   | 丢弃短于该时长的语音片段。                   |
+| `min_silence_ms` | `500`   | 闭合语音片段所需的静音时长。                 |
+| `max_segment_ms` | `30000` | 最长语音片段；`0` 的行为因模型而异，见下文。 |
+| `pad_ms`         | `0`     | 保留属性，当前用于 API 兼容。                |
+
+> #### Example
+>
+> ```python
+> from vad_burn import VadOptions
+>
+> options = VadOptions(
+>     threshold=0.55,
+>     min_speech_ms=200,
+>     min_silence_ms=300,
+>     max_segment_ms=15_000,
+> )
+> ```
+
+`max_segment_ms=0` 会禁用 FSMN 的最长时长拆分；FireRed 则回退到内部默认值
+20,000 ms。
+
+## VadSegment {id="vad-segment",tag="class"}
+
+检测方法返回 `VadSegment` 列表。`start_ms`、`end_ms` 和 `probability` 属性只读：
+
+> #### Example
+>
+> ```python
+> for segment in segments:
+>     print(segment.start_ms, segment.end_ms, segment.probability)
+> ```
+
+## FsmnVadModel {id="fsmn-vad-model",tag="class"}
+
+| Method                                             | Description                            |
+| -------------------------------------------------- | -------------------------------------- |
+| `FsmnVadModel(model_dir)`                          | 从本地目录构造模型。                   |
+| `from_pretrained(model_dir)`                       | 从含 `model.pt` 和 `am.mvn` 的目录加载。 |
+| `from_modelscope(repo_id=None, revision=None)`     | 下载或复用缓存并加载模型。             |
+| `detect(samples, sample_rate, options=None)`       | 返回 `list[VadSegment]`。              |
+| `detect_with_timing(samples, sample_rate, options=None)` | 返回 `VadDetection`。             |
+| `new_stream(options=None)`                         | 创建独立的 `FsmnVadStream`。           |
+
+默认 ModelScope 模型的整段检测：
+
+> #### Example
+>
+> ```python
+> from vad_burn import FsmnVadModel, VadOptions
+>
+> vad = FsmnVadModel.from_modelscope()
+> samples = [0.0] * 16000  # 替换为解码后的 16 kHz mono float PCM
+> segments = vad.detect(samples, 16000, VadOptions(threshold=0.55))
+>
+> for segment in segments:
+>     print(segment.start_ms, segment.end_ms, segment.probability)
+>
+> # 也可以指定仓库和 revision。
+> custom_vad = FsmnVadModel.from_modelscope(
+>     repo_id="iic/speech_fsmn_vad_zh-cn-16k-common-pytorch",
+>     revision="master",
+> )
+> ```
+
+构造器 `FsmnVadModel("/path/to/fsmn-vad")` 与
+`from_pretrained("/path/to/fsmn-vad")` 等价。
+
+## FsmnVadStream {id="fsmn-vad-stream",tag="class"}
+
+| Method                      | Returns            | Description                            |
+| --------------------------- | ------------------ | -------------------------------------- |
+| `push(samples, sample_rate)` | `list[VadSegment]` | 推入一个 chunk，返回已稳定闭合的片段。 |
+| `finish()`                  | `list[VadSegment]` | 刷出剩余片段并重置状态。               |
+| `reset()`                   | `None`             | 清空内部缓存和后处理状态。             |
+
+按 500 ms 切块：
+
+> #### Example
+>
+> ```python
+> stream = vad.new_stream(VadOptions())
+> segments = []
+>
+> for offset in range(0, len(samples), 8000):
+>     segments.extend(stream.push(samples[offset : offset + 8000], 16000))
+> segments.extend(stream.finish())
+> ```
+
+同一个 stream 应顺序使用；并行音频流应各自调用一次 `new_stream()`。
+
+## VadDetection 与 VadTiming {id="fsmn-results"}
+
+`detect_with_timing()` 返回 `VadDetection`，其只读属性为：
+
+| Property       | Type                      | Description          |
+| -------------- | ------------------------- | -------------------- |
+| `segments`     | `list[VadSegment]`        | 检测到的语音片段。   |
+| `frame_scores` | `list[list[float]]`       | 每帧模型 posterior。 |
+| `timing`       | `VadTiming`               | 推理阶段计时。       |
+
+`VadTiming` 公开 `frontend_seconds`、`forward_seconds` 和
+`segmenter_seconds`：
+
+> #### Example
+>
+> ```python
+> detection = vad.detect_with_timing(samples, 16000)
+> print("segments", len(detection.segments))
+> print("frames", len(detection.frame_scores))
+> print("frontend_ms", detection.timing.frontend_seconds * 1000)
+> print("forward_ms", detection.timing.forward_seconds * 1000)
+> print("segmenter_ms", detection.timing.segmenter_seconds * 1000)
+> ```
+
+## FireRedVadModel {id="firered-vad-model",tag="class"}
+
+官方模型根目录包含 `VAD/` 和 `Stream-VAD/`；离线和流式调用分别使用对应权重。
+
+| Method                                                | Description                                |
+| ----------------------------------------------------- | ------------------------------------------ |
+| `FireRedVadModel(model_dir)`                          | 从本地目录构造模型。                       |
+| `from_pretrained(model_dir)`                          | 加载本地 FireRedVAD 模型。                 |
+| `from_modelscope(repo_id=None, revision=None)`        | 下载或复用缓存并加载两组权重。             |
+| `detect(samples, sample_rate, options=None)`          | 返回 `list[VadSegment]`。                  |
+| `detect_with_timing(samples, sample_rate, options=None)` | 返回 `FireRedVadDetection`。          |
+| `new_stream(options=None)`                            | 创建独立的 `FireRedVadStream`。            |
+
+> #### Example
+>
+> ```python
+> from vad_burn import FireRedVadModel, VadOptions
+>
+> vad = FireRedVadModel.from_modelscope()
+> samples = [0.0] * 16000  # 替换为解码后的音频
+> segments = vad.detect(samples, 16000, VadOptions(threshold=0.5))
+>
+> # 本地加载也可以使用等价的 from_pretrained()。
+> local_vad = FireRedVadModel("/path/to/FireRedVAD")
+> ```
+
+本地加载可以使用构造器或等价的 `from_pretrained()`。
+
+## FireRedVadStream {id="firered-vad-stream",tag="class"}
+
+| Method                      | Returns            | Description                            |
+| --------------------------- | ------------------ | -------------------------------------- |
+| `push(samples, sample_rate)` | `list[VadSegment]` | 推入一个 chunk，返回已稳定闭合的片段。 |
+| `finish()`                  | `list[VadSegment]` | 刷出剩余片段并重置状态。               |
+| `reset()`                   | `None`             | 清空 FSMN 缓存和后处理状态。           |
+
+> #### Example
+>
+> ```python
+> stream = vad.new_stream(VadOptions())
+> segments = []
+>
+> for offset in range(0, len(samples), 8000):
+>     segments.extend(stream.push(samples[offset : offset + 8000], 16000))
+> segments.extend(stream.finish())
+> ```
+
+Python stream 不公开 Rust API 的 `frame_scores()` 和 `options()`。
+
+## FireRed 结果与计时 {id="firered-results"}
+
+`FireRedVadDetection` 公开 `segments: list[VadSegment]`、
+`frame_scores: list[float]` 和 `timing: FireRedVadTiming`。
+`FireRedVadTiming` 公开 `frontend_seconds`、`forward_seconds`、
+`postprocess_seconds` 和 `frames`：
+
+> #### Example
+>
+> ```python
+> detection = vad.detect_with_timing(samples, 16000)
+> print("segments", len(detection.segments))
+> print("frames", detection.timing.frames)
+> print("forward_ms", detection.timing.forward_seconds * 1000)
+> print("postprocess_ms", detection.timing.postprocess_seconds * 1000)
+> ```
+
+## 顶层导出 {id="python-exports"}
+
+`vad_burn` 顶层公开：
+
+> #### Example
+>
+> ```python
+> from vad_burn import (
+>     FireRedVadDetection,
+>     FireRedVadModel,
+>     FireRedVadStream,
+>     FireRedVadTiming,
+>     FsmnVadModel,
+>     FsmnVadStream,
+>     VadDetection,
+>     VadOptions,
+>     VadSegment,
+>     VadTiming,
+> )
+> ```
+
+所有类都实现 `__repr__()` 和 `__str__()`；选项属性可读写，检测结果和计时属性只读。

@@ -18,7 +18,8 @@ pip install vad-burn
 ```
 
 Python API 接收普通 sequence 或 NumPy 数组；进入 Rust 后会复制为 `Vec<f32>` 并在
-推理期间释放 GIL。
+推理期间释放 GIL。所有公开类和签名见
+[Python API 参考](/vad-burn/api-python)。
 
 ## 输入样本 {id="samples"}
 
@@ -64,6 +65,19 @@ fsmn = FsmnVadModel.from_pretrained("/path/to/fsmn-vad")
 firered = FireRedVadModel.from_pretrained("/path/to/firered-vad")
 ```
 
+也可以把 ModelScope 仓库和 revision 传给同一个 `from_modelscope()` 方法：
+
+```python
+fsmn = FsmnVadModel.from_modelscope(
+    repo_id="iic/speech_fsmn_vad_zh-cn-16k-common-pytorch",
+    revision="master",
+)
+```
+
+`FsmnVadModel("/path/to/fsmn-vad")` 和
+`FireRedVadModel("/path/to/firered-vad")` 构造器分别等价于对应的
+`from_pretrained()`。
+
 ## 流式检测 {id="streaming"}
 
 ```python
@@ -85,7 +99,7 @@ segments.extend(stream.finish())
 ## 计时结果 {id="timing"}
 
 `detect_with_timing()` 返回 detection 对象，其中包含 segments、frame scores 和计时
-信息：
+信息。FSMN 对应的 Python 类型是 `VadDetection` 和 `VadTiming`：
 
 ```python
 detection = vad.detect_with_timing(samples, 16000)
@@ -97,5 +111,6 @@ print(detection.timing.segmenter_seconds)
 ```
 
 FSMN 的 `frame_scores` 是每帧 posterior 列表；FireRedVAD 的 `frame_scores` 是每帧
-语音概率列表。计时结果适合做本地性能回归，不建议作为跨机器固定 SLA。
-
+语音概率列表。FireRedVAD 返回 `FireRedVadDetection`，其 timing 额外提供
+`postprocess_seconds` 和 `frames`，但没有 `segmenter_seconds`。计时结果适合做
+本地性能回归，不建议作为跨机器固定 SLA。

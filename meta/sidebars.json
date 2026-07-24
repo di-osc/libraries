@@ -35,7 +35,8 @@
             {
                 "label": "参考",
                 "items": [
-                    { "text": "API 参考", "url": "/vad-burn/api" }
+                    { "text": "Python API", "url": "/vad-burn/api-python" },
+                    { "text": "Rust API", "url": "/vad-burn/api" }
                 ]
             }
         ]

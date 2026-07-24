@@ -25,16 +25,10 @@
     "Transcript": "/asr-data/api#transcript",
     "Transcription": "/asr-data/api#transcription",
     "normalize_zh": "/asr-data/api#normalize-zh",
-    "VadOptions": "/vad-burn/api#vad-options",
-    "VadSegment": "/vad-burn/api#vad-segment",
     "Waveform": "/asr-data/api#waveform",
-    "FsmnVadModel": "/vad-burn/api#fsmn-vad-model",
-    "FsmnVadStream": "/vad-burn/api#fsmn-vad-stream",
-    "FsmnVadDetection": "/vad-burn/api#fsmn-vad-detection",
-    "FireRedVadModel": "/vad-burn/api#firered-vad-model",
-    "FireRedVadStream": "/vad-burn/api#firered-vad-stream",
-    "FireRedVadDetection": "/vad-burn/api#firered-vad-detection",
-    "FsmnVadTiming": "/vad-burn/api#timing",
-    "FsmnForwardTiming": "/vad-burn/api#timing",
-    "FireRedVadTiming": "/vad-burn/api#timing"
+    "FsmnVadDetection": "/vad-burn/api#fsmn-results",
+    "VadDetection": "/vad-burn/api-python#fsmn-results",
+    "FsmnVadTiming": "/vad-burn/api#fsmn-results",
+    "VadTiming": "/vad-burn/api-python#fsmn-results",
+    "FsmnForwardTiming": "/vad-burn/api#fsmn-results"
 }
