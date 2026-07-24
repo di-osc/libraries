@@ -1,128 +1,136 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1680" viewBox="0 0 1400 1680" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1480" viewBox="0 0 1400 1480" role="img" aria-labelledby="title desc">
   <title id="title">asr-data 核心概念</title>
-  <desc id="desc">AudioSource 分别通过 load 和 stream 创建同级的 Audio 与 AudioStream；AudioChunk 保存当前块的局部波形并共享 AudioStream 的全局时间轴；AudioStream 可在完成后转换为 Audio。</desc>
+  <desc id="desc">AudioSource 创建 Audio 或 AudioStream。Audio 拥有完整 Timeline，AudioStream 拥有持续增长的 Timeline；二者共享文档字段和相同的标注接口。</desc>
   <defs>
-    <marker id="a-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#39a9cc"/></marker>
-    <marker id="a-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#13b4a7"/></marker>
-    <marker id="a-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#8876bd"/></marker>
-    <marker id="a-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#eb4474"/></marker>
-    <marker id="a-yellow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#d1a900"/></marker>
+    <marker id="blue-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#32a7ca"/></marker>
+    <marker id="purple-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#8772bf"/></marker>
+    <marker id="teal-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#10b2a5"/></marker>
+    <marker id="pink-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#ed3e70"/></marker>
+    <marker id="yellow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#d3aa00"/></marker>
     <style>
-      .brand{font:700 56px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#13a4d5}
-      .title{font:650 36px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#303846;text-anchor:middle}
-      .name{font:650 27px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#303846;text-anchor:middle}
-      .detail{font:600 17px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#4f5c69;text-anchor:middle}
-      .code{font:700 15px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#fff;text-anchor:middle}
+      .brand{font:700 52px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#13a4d5}
+      .title{font:650 31px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#303846;text-anchor:middle}
+      .name{font:650 24px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#303846;text-anchor:middle}
+      .detail{font:600 15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;fill:#53606c;text-anchor:middle}
+      .small{font:600 13px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#71808c;text-anchor:middle}
+      .code{font:700 14px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#fff;text-anchor:middle}
       .node{stroke-width:4;rx:14}
-      .blue{fill:#c9e9f3;stroke:#32a7ca}.teal{fill:#bfe7e1;stroke:#10b2a5}.purple{fill:#d8d0f1;stroke:#8772bf}
+      .text-purple{fill:#7663b0}.text-teal{fill:#079d92}
+      .blue{fill:#c9e9f3;stroke:#32a7ca}.purple{fill:#d8d0f1;stroke:#8772bf}.teal{fill:#bfe7e1;stroke:#10b2a5}
       .pink{fill:#efc3d0;stroke:#ed3e70}.yellow{fill:#f7eaa8;stroke:#d3aa00}.gray{fill:#e8eff3;stroke:#91a5b1}
-      .line-blue{fill:none;stroke:#39a9cc;stroke-width:4;marker-end:url(#a-blue)}
-      .line-teal{fill:none;stroke:#13b4a7;stroke-width:4;marker-end:url(#a-teal)}
-      .line-purple{fill:none;stroke:#8876bd;stroke-width:4;marker-end:url(#a-purple)}
-      .line-pink{fill:none;stroke:#eb4474;stroke-width:4;marker-end:url(#a-pink)}
-      .line-yellow{fill:none;stroke:#d1a900;stroke-width:4;marker-end:url(#a-yellow)}
-      .line-gray{fill:none;stroke:#91a5b1;stroke-width:4}
-      .dash{stroke-dasharray:9 8}.pill{rx:11}.p-blue{fill:#32a7ca}.p-teal{fill:#13b4a7}
-      .p-purple{fill:#8772bf}.p-pink{fill:#e94675}.p-yellow{fill:#d3aa00}.p-gray{fill:#46505e}
+      .line-blue,.line-purple,.line-teal,.line-pink,.line-yellow,.line-gray{fill:none;stroke-linecap:round;stroke-linejoin:round}
+      .line-blue{stroke:#32a7ca;stroke-width:3;marker-end:url(#blue-arrow)}
+      .line-purple{stroke:#8772bf;stroke-width:3;marker-end:url(#purple-arrow)}
+      .line-teal{stroke:#10b2a5;stroke-width:3;marker-end:url(#teal-arrow)}
+      .line-pink{stroke:#ed3e70;stroke-width:3;marker-end:url(#pink-arrow)}
+      .line-yellow{stroke:#d3aa00;stroke-width:3;marker-end:url(#yellow-arrow)}
+      .line-gray{stroke:#91a5b1;stroke-width:2}
+      .pill{rx:11}.p-blue{fill:#32a7ca}.p-purple{fill:#8772bf}.p-teal{fill:#10b2a5}
+      .p-pink{fill:#ed3e70}.p-yellow{fill:#d3aa00}.p-gray{fill:#46505e}
       .icon{fill:none;stroke:#91a5b1;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
       .icon-fill{fill:#e3ebf0;stroke:#91a5b1;stroke-width:3}
     </style>
   </defs>
-  <rect width="1400" height="1680" rx="32" fill="#fff"/>
-  <text class="brand" x="55" y="95">asr-data</text>
 
-  <g aria-label="五种音频来源">
-    <g transform="translate(350 35)"><path class="icon-fill" d="M8 0h52l22 22v78H8z"/><path class="icon" d="M60 0v22h22M23 45h44M23 60h44M23 75h34"/><rect class="pill p-gray" x="15" y="91" width="61" height="26"/><text class="code" x="45" y="109">Path</text></g>
-    <g transform="translate(520 35)"><circle class="icon-fill" cx="45" cy="47" r="42"/><path class="icon" d="M3 47h84M45 5c15 14 23 28 23 42s-8 29-23 42M45 5C30 19 22 33 22 47s8 28 23 42M11 27h68M11 67h68"/><rect class="pill p-gray" x="18" y="91" width="54" height="26"/><text class="code" x="45" y="109">URL</text></g>
-    <g transform="translate(690 35)"><path class="icon-fill" d="M8 0h52l22 22v78H8z"/><path class="icon" d="M60 0v22h22"/><text class="detail" x="45" y="50">010</text><text class="detail" x="45" y="73">101</text><rect class="pill p-gray" x="6" y="91" width="78" height="26"/><text class="code" x="45" y="109">Bytes</text></g>
-    <g transform="translate(860 35)"><path class="icon-fill" d="M8 0h52l22 22v78H8z"/><path class="icon" d="M60 0v22h22"/><text class="detail" x="45" y="62">b64</text><rect class="pill p-gray" x="1" y="91" width="88" height="26"/><text class="code" x="45" y="109">Base64</text></g>
-    <g transform="translate(1030 35)"><rect class="icon-fill" x="3" y="3" width="84" height="84" rx="11"/><path class="icon" d="M12 47h11l7-22 9 43 9-56 11 66 9-42 9 11h8"/><rect class="pill p-gray" x="14" y="91" width="62" height="26"/><text class="code" x="45" y="109">PCM</text></g>
-    <path class="line-gray" d="M395 158v20M565 158v20M735 158v20M905 158v20M1075 158v20M395 178h680"/>
-    <path class="line-blue" d="M735 178v54"/>
+  <rect width="1400" height="1480" rx="32" fill="#fff"/>
+  <text class="brand" x="55" y="88">asr-data</text>
+
+  <!-- Sources -->
+  <g aria-label="音频来源">
+    <g transform="translate(350 25)"><path class="icon-fill" d="M8 0h52l22 22v78H8z"/><path class="icon" d="M60 0v22h22M23 45h44M23 60h44M23 75h34"/><rect class="pill p-gray" x="15" y="91" width="61" height="26"/><text class="code" x="45" y="109">Path</text></g>
+    <g transform="translate(520 25)"><circle class="icon-fill" cx="45" cy="47" r="42"/><path class="icon" d="M3 47h84M45 5c15 14 23 28 23 42s-8 29-23 42M45 5C30 19 22 33 22 47s8 28 23 42M11 27h68M11 67h68"/><rect class="pill p-gray" x="18" y="91" width="54" height="26"/><text class="code" x="45" y="109">URL</text></g>
+    <g transform="translate(690 25)"><path class="icon-fill" d="M8 0h52l22 22v78H8z"/><path class="icon" d="M60 0v22h22"/><text class="detail" x="45" y="50">010</text><text class="detail" x="45" y="73">101</text><rect class="pill p-gray" x="6" y="91" width="78" height="26"/><text class="code" x="45" y="109">Bytes</text></g>
+    <g transform="translate(860 25)"><path class="icon-fill" d="M8 0h52l22 22v78H8z"/><path class="icon" d="M60 0v22h22"/><text class="detail" x="45" y="62">b64</text><rect class="pill p-gray" x="1" y="91" width="88" height="26"/><text class="code" x="45" y="109">Base64</text></g>
+    <g transform="translate(1030 25)"><rect class="icon-fill" x="3" y="3" width="84" height="84" rx="11"/><path class="icon" d="M12 47h11l7-22 9 43 9-56 11 66 9-42 9 11h8"/><rect class="pill p-gray" x="14" y="91" width="62" height="26"/><text class="code" x="45" y="109">PCM</text></g>
+    <path class="line-gray" d="M395 148v18M565 148v18M735 148v18M905 148v18M1075 148v18M395 166h680"/>
+    <path class="line-blue" d="M735 166v42"/>
   </g>
 
-  <rect class="node blue" x="550" y="235" width="370" height="108"/>
-  <rect class="pill p-blue" x="666" y="221" width="138" height="29"/><text class="code" x="735" y="241">asr_data</text>
-  <text class="title" x="735" y="301">AudioSource</text>
+  <rect class="node blue" x="520" y="212" width="430" height="95"/>
+  <rect class="pill p-blue" x="666" y="198" width="138" height="28"/><text class="code" x="735" y="217">asr_data</text>
+  <text class="title" x="735" y="271">AudioSource</text>
 
-  <rect class="node gray" x="52" y="405" width="260" height="100"/>
-  <rect class="pill p-gray" x="108" y="391" width="148" height="29"/><text class="code" x="182" y="411">source.probe()</text>
-  <text class="name" x="182" y="466">AudioInfo</text>
-  <path class="line-blue" d="M575 343C485 381 394 421 312 443"/>
+  <!-- Audio and AudioStream -->
+  <path class="line-purple" d="M635 307v35H345v30"/>
+  <rect class="pill p-purple" x="431" y="327" width="128" height="28"/><text class="code" x="495" y="346">source.load()</text>
+  <path class="line-teal" d="M835 307v35h230v30"/>
+  <rect class="pill p-teal" x="931" y="327" width="148" height="28"/><text class="code" x="1005" y="346">source.stream()</text>
 
-  <rect class="node purple" x="355" y="405" width="335" height="120"/>
-  <rect class="pill p-purple" x="456" y="391" width="133" height="29"/><text class="code" x="522" y="411">source.load()</text>
-  <text class="title" x="522" y="466">Audio</text>
-  <text class="detail" x="522" y="500">完整波形 · 固定时间轴</text>
-  <path class="line-purple" d="M660 343C623 367 580 385 550 405"/>
+  <rect class="node purple" x="220" y="375" width="250" height="90"/>
+  <text class="title" x="345" y="430">Audio</text>
+  <rect class="node gray" x="555" y="365" width="290" height="110"/>
+  <rect class="pill p-gray" x="625" y="351" width="150" height="28"/><text class="code" x="700" y="370">shared fields</text>
+  <text class="detail" x="700" y="410">AudioInfo · id · source</text>
+  <text class="detail" x="700" y="440">metadata · timelines</text>
+  <rect class="node teal" x="930" y="375" width="270" height="90"/>
+  <text class="title" x="1065" y="421">AudioStream</text>
+  <text class="detail" x="1065" y="449">complete → to_audio()</text>
+  <path class="line-gray" d="M470 420h85M845 420h85"/>
 
-  <rect class="node teal" x="790" y="405" width="390" height="120"/>
-  <rect class="pill p-teal" x="892" y="391" width="186" height="29"/><text class="code" x="985" y="411">source.stream()</text>
-  <text class="title" x="985" y="466">AudioStream</text>
-  <text class="detail" x="985" y="500">累计波形 · 增长时间轴</text>
-  <path class="line-teal" d="M810 343C854 367 910 386 945 405"/>
-
-  <path class="line-purple dash" d="M790 474C745 510 720 511 690 474"/>
-  <rect class="pill p-purple" x="696" y="486" width="98" height="29"/><text class="code" x="745" y="506">to_audio()</text>
-
-  <rect class="node blue" x="55" y="620" width="270" height="100"/>
-  <text class="name" x="190" y="680">Waveform</text>
-  <rect class="pill p-blue" x="119" y="606" width="142" height="29"/><text class="code" x="190" y="626">as_waveform()</text>
-  <path class="line-blue" d="M418 525C362 569 313 608 270 629"/>
-  <path class="line-blue dash" d="M841 525C699 574 485 620 325 659"/>
-
-  <rect class="node teal" x="1050" y="620" width="295" height="108"/>
-  <rect class="pill p-teal" x="1141" y="606" width="113" height="29"/><text class="code" x="1197" y="626">iterate</text>
-  <text class="name" x="1197" y="672">AudioChunk</text>
-  <text class="detail" x="1197" y="697">局部波形 · index · offset_ms</text>
-  <text class="detail" x="1197" y="720">共享 metadata 与全局时间轴</text>
-  <path class="line-teal" d="M1030 525c52 34 101 68 134 95"/>
-
-  <rect class="node purple" x="480" y="660" width="430" height="120"/>
-  <rect class="pill p-purple" x="625" y="646" width="140" height="29"/><text class="code" x="695" y="666">.timeline(...)</text>
-  <text class="title" x="695" y="721">Timeline</text>
-  <text class="detail" x="695" y="754">每个声道一个 · 已接收范围可标注</text>
-  <path class="line-purple" d="M545 525c14 56 53 103 99 135"/>
-  <path class="line-teal" d="M950 525c-30 61-93 110-163 135"/>
-  <path class="line-teal dash" d="M1050 684H910"/>
-  <rect class="pill p-teal" x="918" y="669" width="125" height="29"/><text class="code" x="980" y="689">shared timeline</text>
-
-  <g aria-label="数据库">
-    <path class="line-purple" d="M455 525C360 607 235 704 128 782"/>
-    <rect class="pill p-purple" x="281" y="633" width="91" height="29"/><text class="code" x="326" y="653">persists</text>
-    <ellipse class="icon-fill" cx="110" cy="806" rx="65" ry="23"/>
-    <path class="icon-fill" d="M45 806v91c0 13 29 23 65 23s65-10 65-23v-91"/>
-    <path class="icon" d="M45 851c0 13 29 23 65 23s65-10 65-23"/>
-    <rect class="pill p-gray" x="64" y="907" width="92" height="28"/><text class="code" x="110" y="927">AudioDB</text>
+  <g aria-label="AudioDB">
+    <ellipse class="icon-fill" cx="100" cy="390" rx="64" ry="21"/>
+    <path class="icon-fill" d="M36 390v72c0 13 29 22 64 22s64-9 64-22v-72"/>
+    <path class="icon" d="M36 426c0 13 29 22 64 22s64-9 64-22"/>
+    <rect class="pill p-gray" x="54" y="471" width="92" height="27"/><text class="code" x="100" y="490">AudioDB</text>
+    <path class="line-purple" d="M220 420h-56"/>
   </g>
+  <rect class="node teal" x="1235" y="383" width="145" height="74"/>
+  <text class="name" x="1307" y="414">AudioChunk</text>
+  <text class="detail" x="1307" y="441">current block</text>
+  <path class="line-teal" d="M1200 420h35"/>
 
-  <path class="line-teal" d="M625 780v100"/>
-  <path class="line-pink" d="M765 780v100"/>
-  <path class="teal" stroke-width="4" d="M235 884h365l38 61-38 61H235l38-61Z"/>
-  <rect class="pill p-teal" x="329" y="870" width="176" height="29"/><text class="code" x="417" y="890">timeline.reference</text>
-  <text class="name" x="417" y="944">ReferenceSpans</text><text class="detail" x="417" y="979">真值 · 无 source</text>
-  <path class="pink" stroke-width="4" d="M754 884h365l38 61-38 61H754l38-61Z"/>
-  <rect class="pill p-pink" x="838" y="870" width="194" height="29"/><text class="code" x="935" y="890">timeline.prediction</text>
-  <text class="name" x="935" y="944">PredictionSpans</text><text class="detail" x="935" y="979">模型结果 · source 必填</text>
+  <!-- Timeline states -->
+  <text class="name text-purple" x="345" y="550">Audio Timeline</text>
+  <text class="detail" x="345" y="578">完整且固定</text>
+  <line x1="220" y1="620" x2="470" y2="620" stroke="#8772bf" stroke-width="5"/>
+  <line x1="220" y1="606" x2="220" y2="634" stroke="#8772bf" stroke-width="4"/>
+  <line x1="470" y1="606" x2="470" y2="634" stroke="#8772bf" stroke-width="4"/>
+  <text class="small" x="220" y="656">0 ms</text>
+  <text class="small" x="470" y="656">duration_ms</text>
 
-  <path class="line-teal" d="M417 1006c44 47 132 66 211 84"/>
-  <path class="line-pink" d="M935 1006c-44 47-122 66-201 84"/>
-  <rect class="node purple" x="505" y="1092" width="380" height="118"/>
-  <rect class="pill p-purple" x="623" y="1078" width="144" height="29"/><text class="code" x="695" y="1098">annotate_span</text>
-  <text class="title" x="695" y="1150">TimeSpan</text><text class="detail" x="695" y="1184">start_ms · end_ms · source?</text>
+  <text class="name text-teal" x="1065" y="550">AudioStream Timeline</text>
+  <text class="detail" x="1065" y="578">随 chunk 持续增长</text>
+  <line x1="930" y1="620" x2="1125" y2="620" stroke="#10b2a5" stroke-width="5"/>
+  <line x1="930" y1="606" x2="930" y2="634" stroke="#10b2a5" stroke-width="4"/>
+  <circle cx="1125" cy="620" r="8" fill="#10b2a5"/>
+  <line x1="1135" y1="620" x2="1210" y2="620" stroke="#10b2a5" stroke-width="4" stroke-dasharray="8 8" marker-end="url(#teal-arrow)"/>
+  <text class="small" x="930" y="656">0 ms</text>
+  <text class="small" x="1125" y="656">position_ms</text>
 
-  <path class="line-purple" d="M695 1210v96"/>
-  <rect class="pill p-purple" x="636" y="1246" width="118" height="29"/><text class="code" x="695" y="1266">annotation</text>
-  <rect class="node yellow" x="520" y="1308" width="350" height="102"/>
-  <text class="title" x="695" y="1371">Annotation</text>
+  <!-- Shared Timeline annotation API -->
+  <path class="line-gray" d="M345 670v35h355M1065 670v35H700"/>
+  <path class="line-gray" d="M700 705v38"/>
+  <rect class="pill p-gray" x="586" y="742" width="228" height="31"/>
+  <text class="code" x="700" y="763">timeline.annotate_span()</text>
 
-  <path class="line-yellow" d="M695 1410v55"/><path class="line-gray" d="M145 1465h1110"/>
-  <rect class="pill p-yellow" x="651" y="1451" width="88" height="29"/><text class="code" x="695" y="1471">variants</text>
-  <path class="line-yellow" d="M145 1465v75"/><path class="line-yellow" d="M455 1465v75"/><path class="line-yellow" d="M845 1465v75"/><path class="line-yellow" d="M1255 1465v75"/>
-  <rect class="node yellow" x="35" y="1542" width="220" height="82"/><text class="name" x="145" y="1592">AudioActivity</text>
-  <rect class="node yellow" x="360" y="1542" width="190" height="82"/><text class="name" x="455" y="1592">Speaker</text>
-  <rect class="node yellow" x="710" y="1542" width="270" height="82"/><text class="name" x="845" y="1592">Transcription</text>
-  <rect class="node yellow" x="1170" y="1542" width="170" height="82"/><text class="name" x="1255" y="1592">Token</text>
-  <path class="line-yellow dash" d="M550 1583h160"/><rect class="pill p-yellow" x="577" y="1568" width="106" height="29"/><text class="code" x="630" y="1588">optional</text>
-  <path class="line-yellow dash" d="M980 1583h190"/><rect class="pill p-yellow" x="1023" y="1568" width="105" height="29"/><text class="code" x="1075" y="1588">contains</text>
+  <path class="line-teal" d="M650 773v44H362v25"/>
+  <path class="line-pink" d="M750 773v44h288v25"/>
+  <path class="teal" stroke-width="4" d="M150 845h390l34 44-34 44H150l34-44Z"/>
+  <text class="name" x="362" y="883">ReferenceSpans</text>
+  <text class="detail" x="362" y="911">真值 · 无 source</text>
+  <path class="pink" stroke-width="4" d="M826 845h390l34 44-34 44H826l34-44Z"/>
+  <text class="name" x="1038" y="883">PredictionSpans</text>
+  <text class="detail" x="1038" y="911">模型结果 · source 必填</text>
+
+  <path class="line-teal" d="M362 933v38h270"/>
+  <path class="line-pink" d="M1038 933v38H768"/>
+  <rect class="node purple" x="530" y="974" width="340" height="92"/>
+  <text class="name" x="700" y="1014">TimeSpan</text>
+  <text class="detail" x="700" y="1044">start_ms · end_ms · source?</text>
+
+  <path class="line-purple" d="M700 1066v55"/>
+  <rect class="node yellow" x="530" y="1124" width="340" height="86"/>
+  <text class="title" x="700" y="1178">Annotation</text>
+
+  <!-- Variants -->
+  <path class="line-yellow" d="M700 1210v48"/><path class="line-gray" d="M145 1258h1110"/>
+  <rect class="pill p-yellow" x="656" y="1244" width="88" height="28"/><text class="code" x="700" y="1263">variants</text>
+  <path class="line-yellow" d="M145 1258v45"/><path class="line-yellow" d="M455 1258v45"/>
+  <path class="line-yellow" d="M845 1258v45"/><path class="line-yellow" d="M1255 1258v45"/>
+  <rect class="node yellow" x="35" y="1305" width="220" height="72"/><text class="name" x="145" y="1350">AudioActivity</text>
+  <rect class="node yellow" x="360" y="1305" width="190" height="72"/><text class="name" x="455" y="1350">Speaker</text>
+  <rect class="node yellow" x="710" y="1305" width="270" height="72"/><text class="name" x="845" y="1350">Transcription</text>
+  <rect class="node yellow" x="1170" y="1305" width="170" height="72"/><text class="name" x="1255" y="1350">Token</text>
+  <path class="line-yellow" d="M550 1341h160"/><rect class="pill p-yellow" x="577" y="1327" width="106" height="28"/><text class="code" x="630" y="1346">optional</text>
+  <path class="line-yellow" d="M980 1341h190"/><rect class="pill p-yellow" x="1023" y="1327" width="104" height="28"/><text class="code" x="1075" y="1346">contains</text>
 </svg>
