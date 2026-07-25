@@ -106,6 +106,7 @@ describe('documentation template content', () => {
         const content = publicTemplateFiles.map(read).join('\n').toLowerCase()
 
         expect(content).not.toMatch(/di-osc|asr-data|vad-burn/)
+        expect(content).not.toMatch(/\bguide\b/)
     })
 
     test('homepage highlights the three template capabilities', () => {
