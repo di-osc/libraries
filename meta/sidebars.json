@@ -1,22 +1,43 @@
 [
     {
-        "section": "guide",
+        "section": "getting-started",
         "items": [
             {
-                "label": "开始使用",
+                "label": "入门",
                 "items": [
-                    { "text": "模板概览", "url": "/guide" },
-                    { "text": "快速开始", "url": "/guide/getting-started" },
-                    { "text": "站点配置", "url": "/guide/site-configuration" }
+                    { "text": "模板概览", "url": "/getting-started" },
+                    { "text": "快速开始", "url": "/getting-started/quickstart" },
+                    {
+                        "text": "站点配置",
+                        "url": "/getting-started/site-configuration"
+                    }
                 ]
-            },
+            }
+        ]
+    },
+    {
+        "section": "writing",
+        "items": [
             {
-                "label": "编写与发布",
+                "label": "编写文档",
                 "items": [
-                    { "text": "添加与组织文档", "url": "/guide/organizing-docs" },
-                    { "text": "MDX 组件", "url": "/guide/mdx-components" },
-                    { "text": "本地搜索", "url": "/guide/search" },
-                    { "text": "构建与部署", "url": "/guide/build-and-deploy" }
+                    { "text": "添加与组织文档", "url": "/writing" },
+                    { "text": "MDX 组件", "url": "/writing/mdx-components" }
+                ]
+            }
+        ]
+    },
+    {
+        "section": "publishing",
+        "items": [
+            {
+                "label": "发布站点",
+                "items": [
+                    { "text": "本地搜索", "url": "/publishing" },
+                    {
+                        "text": "构建与部署",
+                        "url": "/publishing/build-and-deploy"
+                    }
                 ]
             }
         ]

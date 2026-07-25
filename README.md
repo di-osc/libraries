@@ -19,7 +19,7 @@ npm run preview:search
 ```
 
 普通开发服务器不会生成 Pagefind 索引。完整用法请查看站内的
-[模板使用手册](/guide)。
+[模板使用手册](/getting-started)。
 
 ## 致谢
 

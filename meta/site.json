@@ -8,17 +8,22 @@
     "repo": "your-org/documentation-template",
     "theme": "#09a3d5",
     "sections": [
-        { "id": "guide", "title": "模板使用手册", "theme": "blue" }
+        { "id": "getting-started", "title": "入门", "theme": "blue" },
+        { "id": "writing", "title": "编写", "theme": "blue" },
+        { "id": "publishing", "title": "发布", "theme": "blue" }
     ],
     "navigation": [
-        { "text": "使用手册", "url": "/guide" }
+        { "text": "入门", "url": "/getting-started" },
+        { "text": "编写", "url": "/writing" },
+        { "text": "发布", "url": "/publishing" }
     ],
     "footer": [
         {
             "label": "文档",
             "items": [
-                { "text": "模板概览", "url": "/guide" },
-                { "text": "快速开始", "url": "/guide/getting-started" }
+                { "text": "模板概览", "url": "/getting-started" },
+                { "text": "编写文档", "url": "/writing" },
+                { "text": "构建与部署", "url": "/publishing/build-and-deploy" }
             ]
         },
         {
