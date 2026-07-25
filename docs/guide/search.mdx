@@ -1,0 +1,51 @@
+---
+title: 本地搜索
+teaser: 用 Pagefind 为静态站点生成可离线检索的索引
+section: guide
+menu:
+  - ['开发与预览', 'workflows']
+  - ['索引范围', 'scope']
+  - ['自定义页面', 'custom']
+---
+
+模板使用 Pagefind 做本地搜索。索引在静态导出后生成，因此日常开发服务器默认没有搜索结果。
+
+## 开发与预览 {id="workflows"}
+
+| 命令 | 作用 |
+| --- | --- |
+| `npm run dev` | 日常编辑预览，不生成搜索索引 |
+| `npm run preview:search` | 构建站点、生成索引并启动带搜索的预览服务 |
+| `npm run search:index` | 针对已有 `out/` 目录重建 Pagefind 索引 |
+| `npm run build` | 生产构建：静态导出 + 生成搜索索引 |
+
+验证搜索时推荐：
+
+```bash
+npm run preview:search
+```
+
+## 索引范围 {id="scope"}
+
+Pagefind 会检索：
+
+- 页面标题
+- 章节标题
+- 正文内容
+
+并排除：
+
+- 代码块
+- 导航与页脚
+- 文档示例侧栏等页面框架内容
+
+因此示例代码本身通常不会进入搜索结果，而围绕示例的说明文字会进入索引。
+
+## 自定义页面 {id="custom"}
+
+如果自己新增 React 页面，可用这些属性控制索引范围：
+
+- `data-pagefind-body`：标记应被索引的主体区域
+- `data-pagefind-ignore`：排除不应进入搜索的节点
+
+完成搜索验证后，继续看 [构建与部署](/guide/build-and-deploy)。

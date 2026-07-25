@@ -4,6 +4,6 @@
     "display": "minimal-ui",
     "scope": "/",
     "start_url": "/",
-    "name": "di-osc Libraries",
-    "short_name": "Libraries"
+    "name": "Documentation Template",
+    "short_name": "Docs Template"
 }

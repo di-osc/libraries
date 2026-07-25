@@ -1,0 +1,75 @@
+---
+title: 站点配置
+teaser: 用 meta/site.json 定义站点身份、导航和页脚
+section: guide
+menu:
+  - ['配置位置', 'locations']
+  - ['site.json 字段', 'fields']
+  - ['完整示例', 'example']
+  - ['主题色同步', 'theme']
+---
+
+站点身份和全局导航集中在配置文件中。复制模板后，优先改这里，而不是散落在页面组件里硬编码。
+
+## 配置位置 {id="locations"}
+
+| 文件 | 用途 |
+| --- | --- |
+| `meta/site.json` | 站点名称、说明、域名、组织、仓库、分区、顶部导航、页脚 |
+| `meta/sidebars.json` | 每个分区的分组、页面标题和顺序 |
+| `meta/type-annotations.json` | 类型链接映射；不需要时可保持 `{}` |
+| `public/manifest.webmanifest` | PWA 显示名称与主题色 |
+
+## site.json 字段 {id="fields"}
+
+- `title`：站点标题，出现在浏览器标签和部分页面元信息中。
+- `description`：站点说明，用于 SEO 与分享摘要。
+- `slogan`：短标语。
+- `domain`：裸域名，例如 `example.com`，不要带 `https://`。
+- `company` / `companyUrl`：组织名称与官网或组织主页。
+- `repo`：GitHub 仓库，格式为 `owner/repo`。
+- `theme`：主题色，十六进制颜色值。
+- `sections`：文档分区列表；每个分区需要 `id`、`title`、`theme`。
+- `navigation`：顶部导航链接。
+- `footer`：页脚分组与链接。
+
+## 完整示例 {id="example"}
+
+```json
+{
+  "title": "Documentation Template",
+  "description": "一个支持 MDX、静态导出和本地搜索的中文文档站模板。",
+  "slogan": "Build clear documentation with MDX",
+  "domain": "example.com",
+  "company": "Your Organization",
+  "companyUrl": "https://github.com/your-org",
+  "repo": "your-org/documentation-template",
+  "theme": "#09a3d5",
+  "sections": [
+    { "id": "guide", "title": "模板使用手册", "theme": "blue" }
+  ],
+  "navigation": [
+    { "text": "使用手册", "url": "/guide" }
+  ],
+  "footer": [
+    {
+      "label": "文档",
+      "items": [
+        { "text": "模板概览", "url": "/guide" },
+        { "text": "快速开始", "url": "/guide/getting-started" }
+      ]
+    }
+  ]
+}
+```
+
+新增文档分区时，除了在 `sections` 里声明，还要在 `meta/sidebars.json` 中补充对应侧边栏。
+
+## 主题色同步 {id="theme"}
+
+修改 `theme` 后，请同步更新：
+
+- `public/manifest.webmanifest` 中的 `theme_color`
+- 如有自定义应用壳样式，检查 `pages/_app.tsx` 是否需要同步主题色
+
+侧边栏结构说明见下一页 [添加与组织文档](/guide/organizing-docs)。

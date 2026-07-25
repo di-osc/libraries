@@ -1,0 +1,93 @@
+---
+title: 添加与组织文档
+teaser: 用 docs/ 与 sidebars.json 组织分区、页面和阅读顺序
+section: guide
+menu:
+  - ['路由规则', 'routes']
+  - ['Frontmatter', 'frontmatter']
+  - ['侧边栏', 'sidebars']
+  - ['新增分区', 'new-section']
+---
+
+文档内容放在 `docs/`，页面出现在哪、按什么顺序阅读，则由 `meta/sidebars.json` 决定。
+
+## 路由规则 {id="routes"}
+
+| 文件 | 路由 |
+| --- | --- |
+| `docs/<section>/index.mdx` | `/<section>` |
+| `docs/<section>/<page>.mdx` | `/<section>/<page>` |
+
+例如：
+
+- `docs/guide/index.mdx` → `/guide`
+- `docs/guide/getting-started.mdx` → `/guide/getting-started`
+
+## Frontmatter {id="frontmatter"}
+
+每个 MDX 页面开头需要 frontmatter：
+
+```yaml
+---
+title: 快速开始
+teaser: 安装依赖并启动你的第一个文档站
+section: guide
+menu:
+  - ['环境要求', 'requirements']
+  - ['创建站点', 'create']
+---
+```
+
+含义如下：
+
+- `title`：页面标题。
+- `teaser`：页面摘要，出现在页面头部说明中。
+- `section`：所属分区，必须与目录名和 `site.json.sections[].id` 一致。
+- `menu`：可选，右侧目录；每一项是 `[显示文本, 锚点 id]`。
+
+正文里用 `{id="requirements"}` 这类写法给标题加锚点，才能与 `menu` 对应。
+
+## 侧边栏 {id="sidebars"}
+
+`meta/sidebars.json` 同时控制：
+
+- 左侧导航的分组与页面顺序
+- 文档页底部的“下一篇”顺序
+
+完整示例：
+
+```json
+[
+  {
+    "section": "guide",
+    "items": [
+      {
+        "label": "开始使用",
+        "items": [
+          { "text": "模板概览", "url": "/guide" },
+          { "text": "快速开始", "url": "/guide/getting-started" }
+        ]
+      },
+      {
+        "label": "编写与发布",
+        "items": [
+          { "text": "添加与组织文档", "url": "/guide/organizing-docs" },
+          { "text": "MDX 组件", "url": "/guide/mdx-components" }
+        ]
+      }
+    ]
+  }
+]
+```
+
+只创建 MDX 文件但没有写入侧边栏时，页面可能无法出现在导航中，阅读顺序也会不完整。
+
+## 新增分区 {id="new-section"}
+
+要增加例如 `project` 分区，需要同时完成三步：
+
+1. 创建 `docs/project/index.mdx` 等页面，并设置 `section: project`。
+2. 在 `meta/site.json` 的 `sections`（以及需要时的 `navigation` / `footer`）中加入该分区。
+3. 在 `meta/sidebars.json` 中新增 `"section": "project"` 的完整导航。
+
+写好页面后，可以用模板内置组件增强排版，详见 [MDX 组件](/guide/mdx-components)。

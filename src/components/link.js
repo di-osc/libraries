@@ -7,8 +7,9 @@ import Icon from './icon'
 import { InlineCode } from './inlineCode'
 import classes from '../styles/link.module.sass'
 import { isString, isImage } from './util'
+import siteMetadata from '../../meta/site.json'
 
-const listUrlInternal = ['github.com/di-osc']
+const listUrlInternal = [siteMetadata.companyUrl.replace(/^https?:\/\//, '')]
 const Whitespace = ({ children }) => (
     // Ensure that links are always wrapped in spaces
     <> {children} </>

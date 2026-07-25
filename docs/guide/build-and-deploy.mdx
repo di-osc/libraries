@@ -1,0 +1,76 @@
+---
+title: 构建与部署
+teaser: 运行测试、导出静态站点并部署到托管平台
+section: guide
+menu:
+  - ['发布前检查', 'checks']
+  - ['生产构建', 'build']
+  - ['部署到 Vercel', 'vercel']
+  - ['部署到静态托管', 'static']
+  - ['Sitemap 域名', 'sitemap']
+---
+
+模板输出的是静态站点。只要 `out/` 构建成功，就可以部署到支持静态文件的平台。
+
+## 发布前检查 {id="checks"}
+
+建议按顺序执行：
+
+```bash
+npm test -- --runInBand
+npm run lint
+npm run build
+```
+
+- `npm test`：验证文档结构、配置和关键约束。
+- `npm run lint`：检查 TypeScript / React 代码。
+- `npm run build`：导出静态站点并生成搜索索引。
+
+## 生产构建 {id="build"}
+
+```bash
+npm run build
+```
+
+该命令会：
+
+1. 执行 Next.js 构建与静态导出
+2. 生成 sitemap
+3. 用 Pagefind 为 `out/` 建立搜索索引
+
+部署目录始终是仓库根目录下的 `out/`。
+
+## 部署到 Vercel {id="vercel"}
+
+仓库已包含 `vercel.json`：
+
+```json
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "out",
+  "cleanUrls": true
+}
+```
+
+将仓库导入 Vercel 后，直接使用默认构建设置即可。`cleanUrls` 会让 `/guide` 这类路径无需显式 `.html`。
+
+## 部署到静态托管 {id="static"}
+
+任意静态托管都可以：
+
+1. 运行 `npm run build`
+2. 上传或同步整个 `out/` 目录
+3. 将站点根目录指向 `out/`
+
+常见选择包括 GitHub Pages、Cloudflare Pages、Netlify 或对象存储 + CDN。
+
+## Sitemap 域名 {id="sitemap"}
+
+构建时可通过环境变量指定站点域名：
+
+```bash
+SITE_URL=https://example.com npm run build
+```
+
+未设置时，构建会回退到 Vercel 提供的域名变量，或本地默认值
+`http://localhost:3000`。公开站点建议始终显式设置 `SITE_URL`。

@@ -5,13 +5,17 @@ import classNames from 'classnames'
 import Link from './link'
 import Dropdown from './dropdown'
 import classes from '../styles/navigation.module.sass'
+import siteMetadata from '../../meta/site.json'
+
+const isSectionActive = (url, section) =>
+    Boolean(section) && (url === `/${section}` || url.startsWith(`/${section}/`))
 
 const NavigationDropdown = ({ items = [], section }) => {
-    const active = items.find(({ text }) => text.toLowerCase() === section)
+    const active = items.find(({ url }) => isSectionActive(url, section))
     return (
         <Dropdown defaultValue={active?.url || 'title'} className={classes.dropdown}>
             <option value="title" disabled>
-                Libraries
+                Docs
             </option>
             {items.map(({ text, url }) => (
                 <option key={url} value={url}>
@@ -27,7 +31,7 @@ export default function Navigation({ title, items = [], section, children }) {
         <nav className={classes.root}>
             <Link to="/" aria-label={title} noLinkLayout>
                 <span className={classes.title}>
-                    <span className={classes['title-name']}>di-osc</span>
+                    <span className={classes['title-name']}>{siteMetadata.company}</span>
                     <span className={classes['title-divider']} aria-hidden="true" />
                     <span className={classes['title-product']}>docs</span>
                 </span>
@@ -36,7 +40,7 @@ export default function Navigation({ title, items = [], section, children }) {
                 <NavigationDropdown items={items} section={section} />
                 <ul className={classes.list}>
                     {items.map(({ text, url }) => {
-                        const isActive = section === text.toLowerCase()
+                        const isActive = isSectionActive(url, section)
                         return (
                             <li
                                 key={url}

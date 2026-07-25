@@ -8,32 +8,19 @@ import {
     LandingGrid,
     LandingCard,
 } from '../src/components/landing'
-import LinkComponent from '../src/components/link'
-
-const Link = LinkComponent as React.ComponentType<{
-    to?: string
-    href?: string
-    hideIcon?: boolean
-    children?: React.ReactNode
-}>
 
 export default function Home() {
     return (
         <Layout>
             <LandingHeader>
-                <LandingTitle>开源库文档</LandingTitle>
-                <LandingSubtitle>API 参考、使用指南与最佳实践</LandingSubtitle>
+                <LandingTitle>中文文档站模板</LandingTitle>
+                <LandingSubtitle>
+                    使用 Next.js、MDX 和 Pagefind 构建清晰、可搜索的静态文档
+                </LandingSubtitle>
             </LandingHeader>
-            <LandingGrid blocks style={undefined}>
-                <LandingCard title="ASR-DATA" url="/asr-data" button="查看文档">
-                    面向自动语音识别的数据模型。
-                </LandingCard>
-                <LandingCard title="VAD-BURN" url="/vad-burn" button="查看文档">
-                    基于
-                    <Link to="https://github.com/tracel-ai/burn" hideIcon>
-                        Burn
-                    </Link>
-                    的高性能语音活动检测库。
+            <LandingGrid blocks>
+                <LandingCard title="模板使用手册" url="/guide" button="开始使用">
+                    从站点配置、文档组织和 MDX 组件，到本地搜索、构建与部署。
                 </LandingCard>
             </LandingGrid>
         </Layout>

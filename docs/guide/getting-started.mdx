@@ -1,0 +1,44 @@
+---
+title: 快速开始
+teaser: 安装依赖并启动你的第一个文档站
+section: guide
+menu:
+  - ['环境要求', 'requirements']
+  - ['创建站点', 'create']
+  - ['开始修改', 'customize']
+---
+
+按下面的步骤，可以在几分钟内跑起一个可编辑的文档站。
+
+## 环境要求 {id="requirements"}
+
+- Node.js 24（仓库提供 `.nvmrc`，可用 `nvm use` 切换）
+- npm（随 Node.js 安装）
+
+## 创建站点 {id="create"}
+
+1. 复制本模板仓库到本地。
+2. 安装依赖并启动开发服务器：
+
+```bash
+nvm use
+npm install
+npm run dev
+```
+
+3. 打开 [`http://localhost:3000`](http://localhost:3000)。
+
+开发服务器适合日常写文档。它不会生成 Pagefind 搜索索引；需要验证搜索时，使用
+[本地搜索](/guide/search) 中的预览命令。
+
+## 开始修改 {id="customize"}
+
+第一次改造模板时，按这个顺序修改：
+
+1. `meta/site.json`：站点名称、说明、域名、导航和页脚。
+2. `meta/sidebars.json`：文档分区、分组与页面顺序。
+3. `docs/`：新增或改写 MDX 文档。
+4. `pages/index.tsx`：按需调整首页文案和入口卡片。
+
+详细字段说明见 [站点配置](/guide/site-configuration)；文档组织方式见
+[添加与组织文档](/guide/organizing-docs)。

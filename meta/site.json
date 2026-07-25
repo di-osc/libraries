@@ -1,34 +1,33 @@
 {
-    "title": "di-osc Libraries",
-    "description": "di-osc 维护的开源库文档中心。",
-    "slogan": "Documentation for libraries maintained by di-osc",
-    "domain": "libraries-six.vercel.app",
-    "company": "di-osc",
-    "companyUrl": "https://github.com/di-osc",
-    "repo": "di-osc/libraries",
+    "title": "Documentation Template",
+    "description": "一个支持 MDX、静态导出和本地搜索的中文文档站模板。",
+    "slogan": "Build clear documentation with MDX",
+    "domain": "example.com",
+    "company": "Your Organization",
+    "companyUrl": "https://github.com/your-org",
+    "repo": "your-org/documentation-template",
     "theme": "#09a3d5",
     "sections": [
-        { "id": "asr-data", "title": "asr-data Documentation", "theme": "blue" },
-        { "id": "vad-burn", "title": "vad-burn Documentation", "theme": "blue" }
+        { "id": "guide", "title": "模板使用手册", "theme": "blue" }
     ],
     "navigation": [
-        { "text": "asr-data", "url": "/asr-data" },
-        { "text": "vad-burn", "url": "/vad-burn" }
+        { "text": "使用手册", "url": "/guide" }
     ],
     "footer": [
         {
-            "label": "Libraries",
+            "label": "文档",
             "items": [
-                { "text": "asr-data", "url": "/asr-data" },
-                { "text": "vad-burn", "url": "/vad-burn" }
+                { "text": "模板概览", "url": "/guide" },
+                { "text": "快速开始", "url": "/guide/getting-started" }
             ]
         },
         {
-            "label": "Source",
+            "label": "链接",
             "items": [
-                { "text": "Documentation", "url": "https://github.com/di-osc/libraries" },
-                { "text": "asr-data", "url": "https://github.com/di-osc/asr-data" },
-                { "text": "vad-burn", "url": "https://github.com/di-osc/vad-burn" }
+                {
+                    "text": "模板仓库",
+                    "url": "https://github.com/your-org/documentation-template"
+                }
             ]
         }
     ]

@@ -1,0 +1,106 @@
+---
+title: MDX 组件
+teaser: 使用模板已注册的 Infobox、Button、Accordion 与 Grid
+section: guide
+menu:
+  - ['常用组件', 'components']
+  - ['Markdown 能力', 'markdown']
+---
+
+模板已在 MDX 运行时注册一批常用组件。你可以在文档中直接使用，无需额外导入。
+
+## 常用组件 {id="components"}
+
+### Infobox
+
+用于补充说明或提醒：
+
+```mdx
+<Infobox title="提示">
+
+这里放补充说明。
+
+</Infobox>
+
+<Infobox title="注意" variant="warning">
+
+这里放需要注意的内容。
+
+</Infobox>
+```
+
+### Button
+
+用于站内跳转或强调操作：
+
+```mdx
+<Button to="/guide/getting-started" variant="primary">
+    开始使用
+</Button>
+```
+
+### Accordion
+
+用于折叠较长内容：
+
+```mdx
+<Accordion title="展开查看" id="accordion-example">
+
+这里放可折叠内容。
+
+</Accordion>
+```
+
+### Grid
+
+用于并排放置入口或按钮：
+
+```mdx
+<Grid cols={2}>
+    <Button to="/guide">模板概览</Button>
+    <Button to="/guide/search">本地搜索</Button>
+</Grid>
+```
+
+运行效果：
+
+<Infobox title="提示">
+
+这里放补充说明。
+
+</Infobox>
+
+<Infobox title="注意" variant="warning">
+
+这里放需要注意的内容。
+
+</Infobox>
+
+<Button to="/guide/getting-started" variant="primary">
+    开始使用
+</Button>
+
+<Accordion title="展开查看" id="accordion-example">
+
+这里放可折叠内容。
+
+</Accordion>
+
+<Grid cols={2}>
+    <Button to="/guide">模板概览</Button>
+    <Button to="/guide/search">本地搜索</Button>
+</Grid>
+
+## Markdown 能力 {id="markdown"}
+
+普通 Markdown 也会被自动映射渲染，包括：
+
+- 表格
+- 引用块
+- 图片
+- 代码块与行内代码
+- 标题锚点
+
+图片资源建议放在 `public/`，然后用绝对路径引用，例如 `/images/example.png`。
+
+接下来了解如何验证 [本地搜索](/guide/search)。

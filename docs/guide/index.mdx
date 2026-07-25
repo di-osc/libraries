@@ -1,0 +1,47 @@
+---
+title: 模板概览
+teaser: 使用可配置的 Next.js、MDX 和 Pagefind 搭建中文文档站
+section: guide
+menu:
+  - ['模板能力', 'features']
+  - ['目录结构', 'structure']
+  - ['下一步', 'next']
+---
+
+这是一个可复用的中文静态文档站模板。复制仓库后，主要通过修改配置文件和
+MDX 文档，就能搭建属于自己的文档站点。
+
+## 模板能力 {id="features"}
+
+模板已经内置这些能力：
+
+- **静态导出**：`npm run build` 生成可部署到任意静态托管的 `out/` 目录。
+- **MDX 文档**：在 `docs/` 中用 Markdown 编写内容，并嵌入现成组件。
+- **响应式导航**：顶部导航、左侧边栏和页脚都由配置驱动。
+- **本地搜索**：生产构建会生成 Pagefind 索引，支持离线检索。
+- **PWA 基础配置**：`public/manifest.webmanifest` 提供站点名称与主题色。
+
+## 目录结构 {id="structure"}
+
+日常使用时，优先关注这些目录：
+
+```text
+.
+├── docs/                 # MDX 文档内容
+│   └── guide/            # 当前模板使用手册
+├── meta/
+│   ├── site.json         # 站点名称、导航、页脚
+│   ├── sidebars.json     # 分区、分组与页面顺序
+│   └── type-annotations.json
+├── pages/
+│   └── index.tsx         # 首页
+├── public/               # 静态资源
+└── src/                  # 站点组件、样式与模板逻辑
+```
+
+通常不需要改动 `src/`。只有在扩展组件或调整样式时才需要进入这里。
+
+## 下一步 {id="next"}
+
+从 [快速开始](/guide/getting-started) 安装依赖并启动开发服务器，然后依次修改
+站点配置、侧边栏和文档内容。

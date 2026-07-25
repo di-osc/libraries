@@ -1,7 +1,7 @@
 import { createPagefindClient } from './pagefind'
 
 const rawPageResult = {
-    url: '/asr-data/annotations.html',
+    url: '/guide/annotations.html',
     meta: {
         title: '时间轴与标注',
     },
@@ -9,7 +9,7 @@ const rawPageResult = {
     sub_results: [{
         title: 'Annotation 类型',
         anchor: { id: 'annotation-types' },
-        url: '/asr-data/annotations.html#annotation-types',
+        url: '/guide/annotations.html#annotation-types',
         excerpt: '常用的 <mark>标注</mark> 类型',
     }],
 }
@@ -49,8 +49,8 @@ test('normalizes heading sub-results into stable search objects', async () => {
     }))
 
     await expect(client.search('标注')).resolves.toEqual([{
-        id: '/asr-data/annotations#annotation-types',
-        url: '/asr-data/annotations#annotation-types',
+        id: '/guide/annotations#annotation-types',
+        url: '/guide/annotations#annotation-types',
         title: '时间轴与标注',
         section: 'Annotation 类型',
         excerpt: '常用的 <mark>标注</mark> 类型',
@@ -68,7 +68,7 @@ test('normalizes an h1 sub-result as a page result', async () => {
                     sub_results: [{
                         title: '时间轴与标注',
                         anchor: { element: 'h1', id: 'timeline-and-annotations' },
-                        url: '/asr-data/annotations.html#timeline-and-annotations',
+                        url: '/guide/annotations.html#timeline-and-annotations',
                         excerpt: '使用 <mark>时间轴</mark> 管理标注',
                     }],
                 }),
@@ -77,8 +77,8 @@ test('normalizes an h1 sub-result as a page result', async () => {
     }))
 
     await expect(client.search('时间轴')).resolves.toEqual([{
-        id: '/asr-data/annotations',
-        url: '/asr-data/annotations',
+        id: '/guide/annotations',
+        url: '/guide/annotations',
         title: '时间轴与标注',
         section: null,
         excerpt: '使用 <mark>时间轴</mark> 管理标注',
@@ -96,7 +96,7 @@ test('removes html only before URL endings, anchors, and query delimiters', asyn
                 score: 2,
                 data: async () => ({
                     ...rawPageResult,
-                    url: '/asr-data/annotations.html?view=compact',
+                    url: '/guide/annotations.html?view=compact',
                     sub_results: [],
                 }),
             }],
@@ -104,15 +104,15 @@ test('removes html only before URL endings, anchors, and query delimiters', asyn
     }))
 
     await expect(client.search('annotations')).resolves.toEqual([{
-        id: '/asr-data/annotations',
-        url: '/asr-data/annotations',
+        id: '/guide/annotations',
+        url: '/guide/annotations',
         title: '时间轴与标注',
         section: null,
         excerpt: '使用 <mark>时间轴</mark> 管理标注',
         score: 1,
     }, {
-        id: '/asr-data/annotations?view=compact',
-        url: '/asr-data/annotations?view=compact',
+        id: '/guide/annotations?view=compact',
+        url: '/guide/annotations?view=compact',
         title: '时间轴与标注',
         section: null,
         excerpt: '使用 <mark>时间轴</mark> 管理标注',
@@ -132,7 +132,7 @@ test('skips malformed pages and uses the clean URL as fallback title', async () 
             }, {
                 score: 2,
                 data: async () => ({
-                    url: '/asr-data/fallback.html',
+                    url: '/guide/fallback.html',
                     excerpt: 'Fallback excerpt',
                 }),
             }],
@@ -140,9 +140,9 @@ test('skips malformed pages and uses the clean URL as fallback title', async () 
     }))
 
     await expect(client.search('fallback')).resolves.toEqual([{
-        id: '/asr-data/fallback',
-        url: '/asr-data/fallback',
-        title: '/asr-data/fallback',
+        id: '/guide/fallback',
+        url: '/guide/fallback',
+        title: '/guide/fallback',
         section: null,
         excerpt: 'Fallback excerpt',
         score: 2,
@@ -158,12 +158,12 @@ test('labels page-level sub-results without anchors separately from headings', a
                     ...rawPageResult,
                     sub_results: [{
                         title: '时间轴与标注',
-                        url: '/asr-data/annotations.html',
+                        url: '/guide/annotations.html',
                         excerpt: '匹配前言中的 <mark>标注</mark>',
                     }, {
                         title: 'Annotation 类型',
                         anchor: { id: 'annotation-types' },
-                        url: '/asr-data/annotations.html#annotation-types',
+                        url: '/guide/annotations.html#annotation-types',
                         excerpt: '常用的 <mark>标注</mark> 类型',
                     }, null, undefined, 'Unexpected value', {
                         title: 'Missing URL',
@@ -175,7 +175,7 @@ test('labels page-level sub-results without anchors separately from headings', a
                     }, {
                         title: 'Second valid heading',
                         anchor: { id: 'valid-heading' },
-                        url: '/asr-data/annotations.html#valid-heading',
+                        url: '/guide/annotations.html#valid-heading',
                         excerpt: 'Another <mark>标注</mark> result',
                     }],
                 }),
@@ -184,22 +184,22 @@ test('labels page-level sub-results without anchors separately from headings', a
     }))
 
     await expect(client.search('标注')).resolves.toEqual([{
-        id: '/asr-data/annotations',
-        url: '/asr-data/annotations',
+        id: '/guide/annotations',
+        url: '/guide/annotations',
         title: '时间轴与标注',
         section: null,
         excerpt: '匹配前言中的 <mark>标注</mark>',
         score: 8,
     }, {
-        id: '/asr-data/annotations#annotation-types',
-        url: '/asr-data/annotations#annotation-types',
+        id: '/guide/annotations#annotation-types',
+        url: '/guide/annotations#annotation-types',
         title: '时间轴与标注',
         section: 'Annotation 类型',
         excerpt: '常用的 <mark>标注</mark> 类型',
         score: 8,
     }, {
-        id: '/asr-data/annotations#valid-heading',
-        url: '/asr-data/annotations#valid-heading',
+        id: '/guide/annotations#valid-heading',
+        url: '/guide/annotations#valid-heading',
         title: '时间轴与标注',
         section: 'Second valid heading',
         excerpt: 'Another <mark>标注</mark> result',

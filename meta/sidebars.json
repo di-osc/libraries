@@ -1,42 +1,22 @@
 [
     {
-        "section": "asr-data",
+        "section": "guide",
         "items": [
             {
                 "label": "开始使用",
                 "items": [
-                    { "text": "概览", "url": "/asr-data" },
-                    { "text": "音频", "url": "/asr-data/audio" },
-                    { "text": "标注", "url": "/asr-data/annotations" },
-                    { "text": "数据库", "url": "/asr-data/database" }
+                    { "text": "模板概览", "url": "/guide" },
+                    { "text": "快速开始", "url": "/guide/getting-started" },
+                    { "text": "站点配置", "url": "/guide/site-configuration" }
                 ]
             },
             {
-                "label": "参考",
+                "label": "编写与发布",
                 "items": [
-                    { "text": "Python API", "url": "/asr-data/api" },
-                    { "text": "Rust API", "url": "/asr-data/rust" }
-                ]
-            }
-        ]
-    },
-    {
-        "section": "vad-burn",
-        "items": [
-            {
-                "label": "开始使用",
-                "items": [
-                    { "text": "概览", "url": "/vad-burn" },
-                    { "text": "Rust 使用", "url": "/vad-burn/rust" },
-                    { "text": "Python 使用", "url": "/vad-burn/python" },
-                    { "text": "Benchmark", "url": "/vad-burn/benchmark" }
-                ]
-            },
-            {
-                "label": "参考",
-                "items": [
-                    { "text": "Python API", "url": "/vad-burn/api-python" },
-                    { "text": "Rust API", "url": "/vad-burn/api" }
+                    { "text": "添加与组织文档", "url": "/guide/organizing-docs" },
+                    { "text": "MDX 组件", "url": "/guide/mdx-components" },
+                    { "text": "本地搜索", "url": "/guide/search" },
+                    { "text": "构建与部署", "url": "/guide/build-and-deploy" }
                 ]
             }
         ]
