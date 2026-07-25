@@ -1,9 +1,14 @@
-const loadGeneratedPagefind = attempt => {
-    if (attempt === 0) {
-        return import(/* webpackIgnore: true */ '/pagefind/pagefind.js')
-    }
+import { basePath, normalizeBasePath, withBasePath } from '../basePath'
 
-    return import(/* webpackIgnore: true */ `/pagefind/pagefind.js?retry=${attempt}`)
+const importGeneratedPagefind = path => import(/* webpackIgnore: true */ path)
+
+export const createGeneratedPagefindLoader = (
+    deploymentBasePath = basePath,
+    importModule = importGeneratedPagefind
+) => attempt => {
+    const bundleUrl = withBasePath('/pagefind/pagefind.js', deploymentBasePath)
+
+    return importModule(attempt === 0 ? bundleUrl : `${bundleUrl}?retry=${attempt}`)
 }
 
 const cleanUrl = url => {
@@ -60,9 +65,13 @@ const normalizeResult = (result, page) => {
     })
 }
 
-export const createPagefindClient = (load = loadGeneratedPagefind) => {
+export const createPagefindClient = (
+    load = createGeneratedPagefindLoader(),
+    deploymentBasePath = basePath
+) => {
     let modulePromise = null
     let attempt = 0
+    const searchBaseUrl = `${normalizeBasePath(deploymentBasePath)}/`
 
     const getPagefind = () => {
         if (!modulePromise) {
@@ -71,6 +80,13 @@ export const createPagefindClient = (load = loadGeneratedPagefind) => {
             modulePromise = Promise.resolve()
                 .then(() => load(loadAttempt))
                 .then(module => module.default || module)
+                .then(async pagefind => {
+                    if (typeof pagefind.options === 'function') {
+                        await pagefind.options({ baseUrl: searchBaseUrl })
+                    }
+
+                    return pagefind
+                })
         }
 
         return modulePromise

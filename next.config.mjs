@@ -3,6 +3,16 @@ import PWA from 'next-pwa'
 
 import remarkPlugins from './plugins/index.mjs'
 
+const normalizeBasePath = value => {
+    const path = typeof value === 'string' ? value.trim() : ''
+
+    if (!path || path === '/') {
+        return ''
+    }
+
+    return `/${path.replace(/^\/+|\/+$/g, '')}`
+}
+
 const withMDX = MDX({
     extension: /\.mdx?$/,
     options: {
@@ -24,6 +34,7 @@ const nextConfig = withPWA(
     withMDX({
         reactStrictMode: true,
         swcMinify: true,
+        basePath: normalizeBasePath(process.env.NEXT_PUBLIC_BASE_PATH),
         pageExtensions: ['js', 'jsx', 'ts', 'tsx', 'md', 'mdx'],
         eslint: {
             ignoreDuringBuilds: true,

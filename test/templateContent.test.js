@@ -126,4 +126,63 @@ describe('documentation template content', () => {
         expect(quickstart).toContain('安装完成后，打开')
         expect(quickstart).not.toContain('3. 打开')
     })
+
+    test('prefixes root public metadata with the configured deployment path', () => {
+        const app = read('pages/_app.tsx')
+
+        expect(app).toContain("withBasePath('/sitemap.xml')")
+        expect(app).toContain("withBasePath('/manifest.webmanifest')")
+    })
+
+    test('configures static builds and the web manifest for subpath hosting', () => {
+        const nextConfig = read('next.config.mjs')
+        const manifest = readJson('public/manifest.webmanifest')
+
+        expect(nextConfig).toContain(
+            'basePath: normalizeBasePath(process.env.NEXT_PUBLIC_BASE_PATH)'
+        )
+        expect(manifest.scope).toBe('.')
+        expect(manifest.start_url).toBe('.')
+    })
+
+    test('ships a GitHub Pages workflow with build metadata and deployment permissions', () => {
+        const workflow = read('.github/workflows/deploy-pages.yml')
+
+        expect(workflow).toContain('branches: [main]')
+        expect(workflow).toContain('workflow_dispatch:')
+        expect(workflow).toContain('pages: write')
+        expect(workflow).toContain('id-token: write')
+        expect(workflow).toContain('uses: actions/configure-pages@v5')
+        expect(workflow).toContain(
+            'NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}'
+        )
+        expect(workflow).toContain('SITE_URL: ${{ steps.pages.outputs.base_url }}')
+        expect(workflow).toContain('uses: actions/upload-pages-artifact@v4')
+        expect(workflow).toContain('path: ./out')
+        expect(workflow).toContain('needs: build')
+        expect(workflow).toContain('name: github-pages')
+        expect(workflow).toContain('uses: actions/deploy-pages@v4')
+    })
+
+    test('documents the bundled GitHub Pages deployment from setup to site URL', () => {
+        const deploymentGuide = read('docs/publishing/build-and-deploy.mdx')
+
+        expect(deploymentGuide).toContain(
+            "['部署到 GitHub Pages', 'github-pages']"
+        )
+        expect(deploymentGuide).toContain('.github/workflows/deploy-pages.yml')
+        expect(deploymentGuide).toContain('Settings → Pages')
+        expect(deploymentGuide).toContain('Source')
+        expect(deploymentGuide).toContain('GitHub Actions')
+        expect(deploymentGuide).toContain('推送到 `main`')
+        expect(deploymentGuide).toContain(
+            'https://<用户名>.github.io/<仓库名>/'
+        )
+        expect(deploymentGuide).toContain(
+            'https://<用户名>.github.io/'
+        )
+        expect(deploymentGuide).toContain('NEXT_PUBLIC_BASE_PATH')
+        expect(deploymentGuide).toContain('SITE_URL')
+        expect(deploymentGuide).toContain('无需手工填写仓库子路径')
+    })
 })

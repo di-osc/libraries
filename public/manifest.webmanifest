@@ -2,8 +2,8 @@
     "theme_color": "#09a3d5",
     "background_color": "#ffffff",
     "display": "minimal-ui",
-    "scope": "/",
-    "start_url": "/",
+    "scope": ".",
+    "start_url": ".",
     "name": "Documentation Template",
     "short_name": "Docs Template"
 }

@@ -1,4 +1,4 @@
-import { createPagefindClient } from './pagefind'
+import { createGeneratedPagefindLoader, createPagefindClient } from './pagefind'
 
 const rawPageResult = {
     url: '/guide/annotations.html',
@@ -25,17 +25,37 @@ test('returns no results for a whitespace query without loading Pagefind', async
 
 test('loads Pagefind once across multiple searches', async () => {
     const pagefind = {
+        options: jest.fn().mockResolvedValue(undefined),
         search: jest.fn().mockResolvedValue({ results: [] }),
     }
     const load = jest.fn().mockResolvedValue({ default: pagefind })
-    const client = createPagefindClient(load)
+    const client = createPagefindClient(load, '/libraries')
 
     await client.search('first')
     await client.search('second')
 
     expect(load).toHaveBeenCalledTimes(1)
+    expect(pagefind.options).toHaveBeenCalledTimes(1)
+    expect(pagefind.options).toHaveBeenCalledWith({ baseUrl: '/libraries/' })
     expect(pagefind.search).toHaveBeenNthCalledWith(1, 'first')
     expect(pagefind.search).toHaveBeenNthCalledWith(2, 'second')
+})
+
+test('builds the Pagefind bundle URL under the deployment base path', () => {
+    const importModule = jest.fn()
+    const load = createGeneratedPagefindLoader('/libraries', importModule)
+
+    load(0)
+    load(2)
+
+    expect(importModule).toHaveBeenNthCalledWith(
+        1,
+        '/libraries/pagefind/pagefind.js'
+    )
+    expect(importModule).toHaveBeenNthCalledWith(
+        2,
+        '/libraries/pagefind/pagefind.js?retry=2'
+    )
 })
 
 test('normalizes heading sub-results into stable search objects', async () => {
