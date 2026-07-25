@@ -119,4 +119,11 @@ describe('documentation template content', () => {
         expect(homepage).toContain('url="/writing/mdx-components"')
         expect(homepage).toContain('url="/publishing"')
     })
+
+    test('quickstart does not continue an ordered list across an Example', () => {
+        const quickstart = read('docs/getting-started/quickstart.mdx')
+
+        expect(quickstart).toContain('安装完成后，打开')
+        expect(quickstart).not.toContain('3. 打开')
+    })
 })
