@@ -19,8 +19,18 @@ export default function Home() {
                 </LandingSubtitle>
             </LandingHeader>
             <LandingGrid blocks>
-                <LandingCard title="模板使用手册" url="/guide" button="开始使用">
-                    从站点配置、文档组织和 MDX 组件，到本地搜索、构建与部署。
+                <LandingCard title="配置驱动" url="/getting-started" button="开始使用">
+                    通过站点元数据和侧边栏配置组织大章节、小页面与阅读顺序。
+                </LandingCard>
+                <LandingCard
+                    title="MDX 与 Example"
+                    url="/writing/mdx-components"
+                    button="编写文档"
+                >
+                    使用 MDX 组件编写内容，并把可执行示例放在相关正文右侧。
+                </LandingCard>
+                <LandingCard title="本地搜索与静态部署" url="/publishing" button="发布站点">
+                    使用 Pagefind 生成本地索引，并把静态导出部署到任意托管平台。
                 </LandingCard>
             </LandingGrid>
         </Layout>

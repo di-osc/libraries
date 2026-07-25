@@ -107,4 +107,15 @@ describe('documentation template content', () => {
 
         expect(content).not.toMatch(/di-osc|asr-data|vad-burn/)
     })
+
+    test('homepage highlights the three template capabilities', () => {
+        const homepage = read('pages/index.tsx')
+
+        expect(homepage).toContain('配置驱动')
+        expect(homepage).toContain('MDX 与 Example')
+        expect(homepage).toContain('本地搜索与静态部署')
+        expect(homepage).toContain('url="/getting-started"')
+        expect(homepage).toContain('url="/writing/mdx-components"')
+        expect(homepage).toContain('url="/publishing"')
+    })
 })
