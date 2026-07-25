@@ -5,43 +5,66 @@ const root = path.resolve(__dirname, '..')
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8')
 const readJson = (relativePath) => JSON.parse(read(relativePath))
 
-const guidePages = [
-    'docs/guide/index.mdx',
-    'docs/guide/getting-started.mdx',
-    'docs/guide/site-configuration.mdx',
-    'docs/guide/organizing-docs.mdx',
-    'docs/guide/mdx-components.mdx',
-    'docs/guide/search.mdx',
-    'docs/guide/build-and-deploy.mdx',
+const documentationPages = [
+    'docs/getting-started/index.mdx',
+    'docs/getting-started/quickstart.mdx',
+    'docs/getting-started/site-configuration.mdx',
+    'docs/writing/index.mdx',
+    'docs/writing/mdx-components.mdx',
+    'docs/publishing/index.mdx',
+    'docs/publishing/build-and-deploy.mdx',
 ]
 
 describe('documentation template content', () => {
-    test('exposes one guide section with the expected page order', () => {
+    test('exposes three top-level sections with independent page navigation', () => {
         const site = readJson('meta/site.json')
         const sidebars = readJson('meta/sidebars.json')
 
         expect(site.sections).toEqual([
-            { id: 'guide', title: '模板使用手册', theme: 'blue' },
+            { id: 'getting-started', title: '入门', theme: 'blue' },
+            { id: 'writing', title: '编写', theme: 'blue' },
+            { id: 'publishing', title: '发布', theme: 'blue' },
         ])
         expect(sidebars).toEqual([
             {
-                section: 'guide',
+                section: 'getting-started',
                 items: [
                     {
-                        label: '开始使用',
+                        label: '入门',
                         items: [
-                            { text: '模板概览', url: '/guide' },
-                            { text: '快速开始', url: '/guide/getting-started' },
-                            { text: '站点配置', url: '/guide/site-configuration' },
+                            { text: '模板概览', url: '/getting-started' },
+                            { text: '快速开始', url: '/getting-started/quickstart' },
+                            {
+                                text: '站点配置',
+                                url: '/getting-started/site-configuration',
+                            },
                         ],
                     },
+                ],
+            },
+            {
+                section: 'writing',
+                items: [
                     {
-                        label: '编写与发布',
+                        label: '编写文档',
                         items: [
-                            { text: '添加与组织文档', url: '/guide/organizing-docs' },
-                            { text: 'MDX 组件', url: '/guide/mdx-components' },
-                            { text: '本地搜索', url: '/guide/search' },
-                            { text: '构建与部署', url: '/guide/build-and-deploy' },
+                            { text: '添加与组织文档', url: '/writing' },
+                            { text: 'MDX 组件', url: '/writing/mdx-components' },
+                        ],
+                    },
+                ],
+            },
+            {
+                section: 'publishing',
+                items: [
+                    {
+                        label: '发布站点',
+                        items: [
+                            { text: '本地搜索', url: '/publishing' },
+                            {
+                                text: '构建与部署',
+                                url: '/publishing/build-and-deploy',
+                            },
                         ],
                     },
                 ],
@@ -49,19 +72,22 @@ describe('documentation template content', () => {
         ])
     })
 
-    test('contains only the guide documentation set', () => {
+    test('contains only the documentation template sections', () => {
         expect(
             fs
                 .readdirSync(path.join(root, 'docs'), { withFileTypes: true })
                 .filter((entry) => entry.isDirectory() && entry.name !== 'superpowers')
                 .map((entry) => entry.name)
-        ).toEqual(['guide'])
-        expect(guidePages.every((file) => fs.existsSync(path.join(root, file)))).toBe(true)
+                .sort()
+        ).toEqual(['getting-started', 'publishing', 'writing'])
+        expect(documentationPages.every((file) => fs.existsSync(path.join(root, file)))).toBe(true)
     })
 
-    test('all guide pages declare the guide section', () => {
-        for (const file of guidePages) {
-            expect(read(file)).toMatch(/^---[\s\S]*?section: guide[\s\S]*?---/)
+    test('all documentation pages declare the section from their directory', () => {
+        for (const file of documentationPages) {
+            const section = file.split('/')[1]
+            const frontmatter = read(file).match(/^---\n([\s\S]*?)\n---/)
+            expect(frontmatter?.[1]).toContain(`section: ${section}`)
         }
     })
 
@@ -75,7 +101,7 @@ describe('documentation template content', () => {
             'meta/sidebars.json',
             'meta/type-annotations.json',
             'pages/index.tsx',
-            ...guidePages,
+            ...documentationPages,
         ]
         const content = publicTemplateFiles.map(read).join('\n').toLowerCase()
 
