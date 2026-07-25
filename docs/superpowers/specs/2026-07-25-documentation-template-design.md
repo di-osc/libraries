@@ -35,10 +35,10 @@
   - 快速开始（`/getting-started/quickstart`）
   - 站点配置（`/getting-started/site-configuration`）
 - 编写（`/writing`）
-  - 添加与组织文档（`/writing/organizing-docs`）
+  - 添加与组织文档（`/writing`）
   - MDX 组件（`/writing/mdx-components`）
 - 发布（`/publishing`）
-  - 本地搜索（`/publishing/search`）
+  - 本地搜索（`/publishing`）
   - 构建与部署（`/publishing/build-and-deploy`）
 
 当前页面的 `menu` 小节继续嵌套显示在左侧活动页面下。原 `/guide/*` 路由直接替换，
