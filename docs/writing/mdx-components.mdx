@@ -1,7 +1,7 @@
 ---
 title: MDX 组件
 teaser: 使用模板已注册的 Infobox、Button、Accordion 与 Grid
-section: guide
+section: writing
 menu:
   - ['常用组件', 'components']
   - ['Markdown 能力', 'markdown']
@@ -34,7 +34,7 @@ menu:
 用于站内跳转或强调操作：
 
 ```mdx
-<Button to="/guide/getting-started" variant="primary">
+<Button to="/getting-started/quickstart" variant="primary">
     开始使用
 </Button>
 ```
@@ -57,10 +57,26 @@ menu:
 
 ```mdx
 <Grid cols={2}>
-    <Button to="/guide">模板概览</Button>
-    <Button to="/guide/search">本地搜索</Button>
+    <Button to="/getting-started">模板概览</Button>
+    <Button to="/publishing">本地搜索</Button>
 </Grid>
 ```
+
+### Aside
+
+用于把短小、完整的 Example 放到相关正文右侧。`Aside` 应位于对应的 `##` 小节内；
+移动端会自动回到正文流：
+
+````mdx
+<Aside title="Example">
+
+```bash
+npm install
+npm run dev
+```
+
+</Aside>
+````
 
 运行效果：
 
@@ -76,7 +92,7 @@ menu:
 
 </Infobox>
 
-<Button to="/guide/getting-started" variant="primary">
+<Button to="/getting-started/quickstart" variant="primary">
     开始使用
 </Button>
 
@@ -87,9 +103,18 @@ menu:
 </Accordion>
 
 <Grid cols={2}>
-    <Button to="/guide">模板概览</Button>
-    <Button to="/guide/search">本地搜索</Button>
+    <Button to="/getting-started">模板概览</Button>
+    <Button to="/publishing">本地搜索</Button>
 </Grid>
+
+<Aside title="Example">
+
+```bash
+npm install
+npm run dev
+```
+
+</Aside>
 
 ## Markdown 能力 {id="markdown"}
 
@@ -103,4 +128,4 @@ menu:
 
 图片资源建议放在 `public/`，然后用绝对路径引用，例如 `/images/example.png`。
 
-接下来了解如何验证 [本地搜索](/guide/search)。
+接下来了解如何验证 [本地搜索](/publishing)。

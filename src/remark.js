@@ -64,6 +64,7 @@ export const remarkComponents = {
     Abbr,
     Tag,
     Accordion,
+    Aside,
     Grid,
     CodeBlock,
     InlineCode,

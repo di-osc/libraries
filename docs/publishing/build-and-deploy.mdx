@@ -1,7 +1,7 @@
 ---
 title: 构建与部署
 teaser: 运行测试、导出静态站点并部署到托管平台
-section: guide
+section: publishing
 menu:
   - ['发布前检查', 'checks']
   - ['生产构建', 'build']
@@ -16,11 +16,15 @@ menu:
 
 建议按顺序执行：
 
+<Aside title="Example">
+
 ```bash
 npm test -- --runInBand
 npm run lint
 npm run build
 ```
+
+</Aside>
 
 - `npm test`：验证文档结构、配置和关键约束。
 - `npm run lint`：检查 TypeScript / React 代码。
@@ -52,7 +56,8 @@ npm run build
 }
 ```
 
-将仓库导入 Vercel 后，直接使用默认构建设置即可。`cleanUrls` 会让 `/guide` 这类路径无需显式 `.html`。
+将仓库导入 Vercel 后，直接使用默认构建设置即可。`cleanUrls` 会让
+`/getting-started` 这类路径无需显式 `.html`。
 
 ## 部署到静态托管 {id="static"}
 
@@ -68,9 +73,13 @@ npm run build
 
 构建时可通过环境变量指定站点域名：
 
+<Aside title="Example">
+
 ```bash
 SITE_URL=https://example.com npm run build
 ```
+
+</Aside>
 
 未设置时，构建会回退到 Vercel 提供的域名变量，或本地默认值
 `http://localhost:3000`。公开站点建议始终显式设置 `SITE_URL`。

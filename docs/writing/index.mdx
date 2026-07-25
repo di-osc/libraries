@@ -1,7 +1,7 @@
 ---
 title: 添加与组织文档
 teaser: 用 docs/ 与 sidebars.json 组织分区、页面和阅读顺序
-section: guide
+section: writing
 menu:
   - ['路由规则', 'routes']
   - ['Frontmatter', 'frontmatter']
@@ -20,23 +20,27 @@ menu:
 
 例如：
 
-- `docs/guide/index.mdx` → `/guide`
-- `docs/guide/getting-started.mdx` → `/guide/getting-started`
+- `docs/writing/index.mdx` → `/writing`
+- `docs/writing/mdx-components.mdx` → `/writing/mdx-components`
 
 ## Frontmatter {id="frontmatter"}
 
 每个 MDX 页面开头需要 frontmatter：
 
+<Aside title="Example">
+
 ```yaml
 ---
-title: 快速开始
-teaser: 安装依赖并启动你的第一个文档站
-section: guide
+title: 添加与组织文档
+teaser: 用 docs/ 与 sidebars.json 组织分区、页面和阅读顺序
+section: writing
 menu:
-  - ['环境要求', 'requirements']
-  - ['创建站点', 'create']
+  - ['路由规则', 'routes']
+  - ['Frontmatter', 'frontmatter']
 ---
 ```
+
+</Aside>
 
 含义如下：
 
@@ -59,20 +63,13 @@ menu:
 ```json
 [
   {
-    "section": "guide",
+    "section": "getting-started",
     "items": [
       {
-        "label": "开始使用",
+        "label": "入门",
         "items": [
-          { "text": "模板概览", "url": "/guide" },
-          { "text": "快速开始", "url": "/guide/getting-started" }
-        ]
-      },
-      {
-        "label": "编写与发布",
-        "items": [
-          { "text": "添加与组织文档", "url": "/guide/organizing-docs" },
-          { "text": "MDX 组件", "url": "/guide/mdx-components" }
+          { "text": "模板概览", "url": "/getting-started" },
+          { "text": "快速开始", "url": "/getting-started/quickstart" }
         ]
       }
     ]
@@ -90,4 +87,4 @@ menu:
 2. 在 `meta/site.json` 的 `sections`（以及需要时的 `navigation` / `footer`）中加入该分区。
 3. 在 `meta/sidebars.json` 中新增 `"section": "project"` 的完整导航。
 
-写好页面后，可以用模板内置组件增强排版，详见 [MDX 组件](/guide/mdx-components)。
+写好页面后，可以用模板内置组件增强排版，详见 [MDX 组件](/writing/mdx-components)。

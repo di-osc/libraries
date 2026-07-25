@@ -1,7 +1,7 @@
 ---
 title: 本地搜索
 teaser: 用 Pagefind 为静态站点生成可离线检索的索引
-section: guide
+section: publishing
 menu:
   - ['开发与预览', 'workflows']
   - ['索引范围', 'scope']
@@ -21,9 +21,13 @@ menu:
 
 验证搜索时推荐：
 
+<Aside title="Example">
+
 ```bash
 npm run preview:search
 ```
+
+</Aside>
 
 ## 索引范围 {id="scope"}
 
@@ -48,4 +52,4 @@ Pagefind 会检索：
 - `data-pagefind-body`：标记应被索引的主体区域
 - `data-pagefind-ignore`：排除不应进入搜索的节点
 
-完成搜索验证后，继续看 [构建与部署](/guide/build-and-deploy)。
+完成搜索验证后，继续看 [构建与部署](/publishing/build-and-deploy)。

@@ -1,7 +1,7 @@
 ---
 title: 快速开始
 teaser: 安装依赖并启动你的第一个文档站
-section: guide
+section: getting-started
 menu:
   - ['环境要求', 'requirements']
   - ['创建站点', 'create']
@@ -20,16 +20,20 @@ menu:
 1. 复制本模板仓库到本地。
 2. 安装依赖并启动开发服务器：
 
+<Aside title="Example">
+
 ```bash
 nvm use
 npm install
 npm run dev
 ```
 
+</Aside>
+
 3. 打开 [`http://localhost:3000`](http://localhost:3000)。
 
 开发服务器适合日常写文档。它不会生成 Pagefind 搜索索引；需要验证搜索时，使用
-[本地搜索](/guide/search) 中的预览命令。
+[本地搜索](/publishing) 中的预览命令。
 
 ## 开始修改 {id="customize"}
 
@@ -40,5 +44,5 @@ npm run dev
 3. `docs/`：新增或改写 MDX 文档。
 4. `pages/index.tsx`：按需调整首页文案和入口卡片。
 
-详细字段说明见 [站点配置](/guide/site-configuration)；文档组织方式见
-[添加与组织文档](/guide/organizing-docs)。
+详细字段说明见 [站点配置](/getting-started/site-configuration)；文档组织方式见
+[添加与组织文档](/writing)。

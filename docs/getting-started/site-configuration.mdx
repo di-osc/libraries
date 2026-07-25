@@ -1,7 +1,7 @@
 ---
 title: 站点配置
 teaser: 用 meta/site.json 定义站点身份、导航和页脚
-section: guide
+section: getting-started
 menu:
   - ['配置位置', 'locations']
   - ['site.json 字段', 'fields']
@@ -33,6 +33,19 @@ menu:
 - `navigation`：顶部导航链接。
 - `footer`：页脚分组与链接。
 
+<Aside title="Example">
+
+```json
+{
+  "title": "My Docs",
+  "domain": "docs.example.com",
+  "company": "My Team",
+  "repo": "my-team/docs"
+}
+```
+
+</Aside>
+
 ## 完整示例 {id="example"}
 
 ```json
@@ -49,14 +62,16 @@ menu:
     { "id": "guide", "title": "模板使用手册", "theme": "blue" }
   ],
   "navigation": [
-    { "text": "使用手册", "url": "/guide" }
+    { "text": "入门", "url": "/getting-started" },
+    { "text": "编写", "url": "/writing" },
+    { "text": "发布", "url": "/publishing" }
   ],
   "footer": [
     {
       "label": "文档",
       "items": [
-        { "text": "模板概览", "url": "/guide" },
-        { "text": "快速开始", "url": "/guide/getting-started" }
+        { "text": "模板概览", "url": "/getting-started" },
+        { "text": "编写文档", "url": "/writing" }
       ]
     }
   ]
@@ -72,4 +87,4 @@ menu:
 - `public/manifest.webmanifest` 中的 `theme_color`
 - 如有自定义应用壳样式，检查 `pages/_app.tsx` 是否需要同步主题色
 
-侧边栏结构说明见下一页 [添加与组织文档](/guide/organizing-docs)。
+侧边栏结构说明见下一章 [添加与组织文档](/writing)。
