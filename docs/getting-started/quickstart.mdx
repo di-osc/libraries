@@ -18,8 +18,16 @@ menu:
 - Git
 - npm（随 Node.js 安装）
 
-先用 `node --version` 和 `npm --version` 确认命令可用。如果没有 `nvm`，也可以直
-接安装与 `.nvmrc` 一致的 Node.js 版本。
+先确认版本：
+
+```bash
+node --version
+npm --version
+git --version
+```
+
+预期 `node --version` 以 `v24.` 开头，其余两个命令能输出版本号。如果没有 `nvm`，
+也可以直接安装与 `.nvmrc` 一致的 Node.js 版本。
 
 ## 从模板创建仓库 {id="create"}
 
@@ -56,6 +64,15 @@ npm run dev
 终端出现 ready 提示后，打开 [`http://localhost:3000`](http://localhost:3000)。你
 应该看到模板首页，并能从右上角进入“入门”“编写”“发布”三个大章节。
 
+另开一个终端运行：
+
+```bash
+npm test -- --runInBand
+```
+
+看到全部测试通过，说明文档、配置和导航在修改前是一致的。后续每完成一个章节，都用
+同一命令检查一次。
+
 开发服务器适合日常写文档。它不会生成 Pagefind 搜索索引；需要验证搜索时，使用
 [本地搜索](/publishing) 中的预览命令。
 
@@ -63,11 +80,11 @@ npm run dev
 
 按这个顺序替换示例内容，最不容易遗漏：
 
-1. 修改 `meta/site.json` 中的标题、组织、仓库、顶部导航和页脚。
-2. 同步修改 `public/manifest.webmanifest` 中的应用名称和主题色。
-3. 修改 `pages/index.tsx` 中的首页标题、说明和入口卡片。
-4. 规划自己的大章节，并同步更新 `site.json`、`sidebars.json` 和 `docs/`。
-5. 删除不需要的模板示例页，再运行测试确认没有遗留导航链接。
+1. 先按下一页的例子新增一个 `guide` 大章节和入口页面。
+2. 修改 `meta/site.json` 中的标题、组织、仓库、顶部导航和页脚。
+3. 同步修改 `public/manifest.webmanifest` 和 `pages/index.tsx`。
+4. 逐页迁移自己的内容；每新增一页就立即加入对应侧边栏。
+5. 内容完整后，再一起删除不需要的模板文档与导航。
 
 <Infobox title="不要只改文件名" variant="warning">
 

@@ -24,28 +24,78 @@ menu:
 
 <Infobox title="先搜索占位符">
 
-可以在编辑器中搜索 `Documentation Template`、`Your Organization`、 `your-org` 和
-`example.com`，确认公开内容里没有遗留模板身份。
+运行下面的命令可以一次找出常见占位符：
+
+```bash
+rg 'Documentation Template|Docs Template|Your Organization|your-org|example\.com'
+```
+
+修改完成后再次运行；没有输出，表示这些占位符已经清理完毕。
 
 </Infobox>
+
+以 Acme SDK 为例，`meta/site.json` 中的站点身份可以改成：
+
+```json
+{
+  "title": "Acme SDK",
+  "description": "Acme SDK 中文使用文档。",
+  "slogan": "Build with Acme",
+  "company": "Acme",
+  "companyUrl": "https://acme.example",
+  "repo": "acme/sdk-docs",
+  "theme": "#0a8f6a"
+}
+```
+
+这里只展示需要替换的字段，不要删除同一文件中的 `sections`、`navigation` 和
+`footer`。预期浏览器标题、左上角名称、源码链接和页脚组织信息一起更新。
+
+再把 `public/manifest.webmanifest` 完整替换为：
+
+```json
+{
+  "theme_color": "#0a8f6a",
+  "background_color": "#ffffff",
+  "display": "minimal-ui",
+  "scope": ".",
+  "start_url": ".",
+  "name": "Acme SDK 中文文档",
+  "short_name": "Acme SDK"
+}
+```
+
+`scope` 和 `start_url` 保持相对路径，部署到 GitHub Pages 子路径时才能由浏览器正
+确解析。刷新页面后，在开发者工具的 Application → Manifest 中应看到新名称和主题色
+。
 
 ## 首页内容 {id="homepage"}
 
 首页位于 `pages/index.tsx`。`LandingTitle` 是主标题，`LandingSubtitle` 是一句话
-说明，`LandingCard` 用于放置最重要的三个入口。
+说明，`LandingCard` 用于放置最重要的入口。下面的完整代码可以替换原有
+`<LandingGrid blocks>...</LandingGrid>`：
 
 <Aside title="Example">
 
 ```tsx
-<LandingCard title="快速开始" url="/guide" button="开始使用">
-  五分钟完成安装和第一个请求。
-</LandingCard>
+<LandingGrid blocks>
+  <LandingCard title="快速开始" url="/guide" button="开始使用">
+    五分钟完成安装和第一个请求。
+  </LandingCard>
+  <LandingCard title="API 参考" url="/api" button="查看接口">
+    查找公开类型、参数和返回值。
+  </LandingCard>
+</LandingGrid>
 ```
 
 </Aside>
 
 入口卡片应指向真实页面。首页适合回答“这是什么、能做什么、下一步去哪”，详细操作步
-骤放到文档页，避免首页变成长手册。
+骤放到文档页，避免首页变成长手册。保存后，首页应出现两张并排卡片，窄屏时自动改为
+纵向排列。
+
+`LandingCard` 是首页组件，不能直接写在 MDX 文档中。文档作者可用的组件及实时效果
+集中在 [MDX 组件](/writing/mdx-components)。
 
 ## 章节主题 {id="themes"}
 
@@ -65,6 +115,14 @@ menu:
 根级 `site.json.theme` 是浏览器 UI 颜色；manifest 的 `theme_color` 是安装后应用
 的主题色。它们不会改变章节颜色。
 
+例如，把 Acme 指南的配置设为：
+
+```json
+{ "id": "guide", "title": "产品指南", "theme": "green" }
+```
+
+保存后进入 `/guide`，章节强调色应变为绿色；其他章节仍使用各自的 theme。
+
 ## 字体与图标 {id="assets"}
 
 - 字体文件位于 `src/fonts/`，字体族和字重在 `src/styles/layout.sass` 定义。
@@ -73,6 +131,22 @@ menu:
   默认只提供基础 manifest，没有预置应用图标。
 - 图片引用规则和 GitHub Pages 子路径处理见 [图片与链接](/writing/assets)。
 
+新增应用图标时，可将 `public/icons/icon-192.png` 放入仓库，再在 manifest 中增加
+：
+
+```json
+"icons": [
+  {
+    "src": "icons/icon-192.png",
+    "sizes": "192x192",
+    "type": "image/png"
+  }
+]
+```
+
+图标 `src` 使用相对路径，不要写仓库名。重新构建后，在 Application → Manifest 中
+应能预览该图标。
+
 ## 定制边界 {id="boundary"}
 
 只替换内容和品牌时，优先停留在 `docs/`、`meta/`、`public/` 和
@@ -80,4 +154,5 @@ menu:
 `src/components/` 和 `src/styles/`，并补充对应测试。
 
 每次修改样式后，至少在桌面和窄屏各检查一次首页、普通文档页、长代码块和 Example
-侧栏。
+侧栏。最后运行 `npm test -- --runInBand` 和 `npm run build`；二者都成功才说明品
+牌配置没有破坏导航或静态导出。

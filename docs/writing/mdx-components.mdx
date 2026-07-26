@@ -1,44 +1,74 @@
 ---
 title: MDX 组件
-teaser: 使用模板已注册的 Infobox、Button、Accordion 与 Grid
+teaser: 从源码到实际效果使用模板内置的写作组件
 section: writing
 menu:
-  - ['使用原则', 'principles']
+  - ['使用方式', 'principles']
   - ['Infobox', 'infobox']
   - ['Button', 'button']
   - ['Accordion', 'accordion']
   - ['Grid', 'grid']
   - ['Aside', 'aside']
+  - ['Tag', 'tag']
+  - ['类型标注', 'type-annotations']
   - ['Markdown 能力', 'markdown']
 ---
 
-模板已在 MDX 运行时注册一批常用组件。你可以在 `.mdx` 中直接使用，无需额外导入。
-优先使用普通 Markdown，只有语义或布局需要时才使用组件。
+模板把常用写作组件注册到了 MDX 运行时。在 `docs/**/*.mdx` 中可以直接写组件标签，
+不需要 `import`。本页每个组件都先给出可复制源码，再紧跟页面中的实际效果。
 
-## 使用原则 {id="principles"}
+## 使用方式 {id="principles"}
 
-- 示例保持短小、完整，放在相关说明之后。
-- 组件标签之间的正文前后保留空行，避免 MDX 把内容解析成普通文本。
-- 站内跳转使用以 `/` 开头的路径；外链写完整 `https://` 地址。
-- 不要只靠颜色表达危险或成功状态，标题中也要写清含义。
+MDX 是 Markdown 与 JSX 的组合：普通段落、列表、表格继续使用 Markdown，需要提示框
+、折叠区或多列布局时再使用组件。
+
+```mdx
+普通 Markdown 段落。
+
+<Infobox title="提示">
+
+组件内部仍然可以写 **Markdown**。
+
+</Infobox>
+```
+
+组件开始标签、正文和结束标签之间保留空行，这样内部 Markdown 才会被正确解析。布尔
+属性可以简写，例如 `spaced` 等价于 `spaced={true}`。
 
 ## Infobox {id="infobox"}
 
-用于提示、警告和高风险提醒。
+`Infobox` 用于从正文中突出提示、警告或危险操作。普通补充信息使用默认样式，需要用
+户格外注意时才使用 `warning` 或 `danger`。
+
+源码：
 
 ```mdx
-<Infobox title="提示" emoji="💡">
+<Infobox title="配置提示" emoji="💡">
 
-这里放补充说明。
+修改导航后运行测试，确认每个链接都有对应页面。
 
 </Infobox>
 
 <Infobox title="删除前确认" variant="danger">
 
-删除后无法从站点恢复。
+删除公开页面前先处理旧 URL，避免已有链接失效。
 
 </Infobox>
 ```
+
+实际效果：
+
+<Infobox title="配置提示" emoji="💡">
+
+修改导航后运行测试，确认每个链接都有对应页面。
+
+</Infobox>
+
+<Infobox title="删除前确认" variant="danger">
+
+删除公开页面前先处理旧 URL，避免已有链接失效。
+
+</Infobox>
 
 | 属性      | 类型 / 可选值                    | 默认值    | 说明                   |
 | --------- | -------------------------------- | --------- | ---------------------- |
@@ -50,7 +80,10 @@ menu:
 
 ## Button {id="button"}
 
-用于突出下一步操作或重要入口。普通正文链接不需要包装成按钮。
+`Button` 用于突出明确的下一步。段落中的普通引用仍应使用 Markdown 链接，避免每个
+链接都变成高强调按钮。
+
+源码：
 
 ```mdx
 <Button to="/getting-started/quickstart" variant="primary">
@@ -58,24 +91,41 @@ menu:
 </Button>
 ```
 
-| 属性      | 类型 / 可选值                        | 默认值      | 说明                 |
-| --------- | ------------------------------------ | ----------- | -------------------- |
-| `to`      | 字符串                               | 无          | 目标 URL             |
-| `variant` | `primary` / `secondary` / `tertiary` | `secondary` | 按钮强调级别         |
-| `large`   | 布尔值                               | `false`     | 使用大尺寸           |
-| `icon`    | 图标名                               | 无          | 在文字前显示内置图标 |
+实际效果：
+
+<Button to="/getting-started/quickstart" variant="primary">
+  开始使用
+</Button>
+
+| 属性      | 类型 / 可选值                        | 默认值      | 说明               |
+| --------- | ------------------------------------ | ----------- | ------------------ |
+| `to`      | 字符串                               | 无          | 站内或外部目标 URL |
+| `variant` | `primary` / `secondary` / `tertiary` | `secondary` | 按钮强调级别       |
+| `large`   | 布尔值                               | `false`     | 使用大尺寸         |
+| `icon`    | 内置图标名                           | 无          | 在文字前显示图标   |
 
 ## Accordion {id="accordion"}
 
-用于折叠可选细节、长配置或兼容性说明。核心步骤不要默认折叠。
+`Accordion` 用于折叠可选细节、长配置或兼容性说明。完成任务必需的步骤不要折叠，否
+则读者容易遗漏。
+
+源码：
 
 ```mdx
 <Accordion title="查看完整配置" id="full-config" expanded={false} spaced>
 
-这里放可折叠内容。
+这里放不影响主流程的完整配置。
 
 </Accordion>
 ```
+
+实际效果：
+
+<Accordion title="查看完整配置" id="full-config" expanded={false} spaced>
+
+这里放不影响主流程的完整配置。
+
+</Accordion>
 
 | 属性       | 类型   | 默认值  | 说明               |
 | ---------- | ------ | ------- | ------------------ |
@@ -86,7 +136,10 @@ menu:
 
 ## Grid {id="grid"}
 
-用于并排放置同级入口。窄屏会自动换行。
+`Grid` 把同级入口排成多列，在窄屏中自动换行。它只负责布局，内部通常放 `Button`、
+卡片或短内容。
+
+源码：
 
 ```mdx
 <Grid cols={2}>
@@ -95,16 +148,25 @@ menu:
 </Grid>
 ```
 
+实际效果：
+
+<Grid cols={2}>
+  <Button to="/getting-started">模板概览</Button>
+  <Button to="/publishing">本地搜索</Button>
+</Grid>
+
 | 属性           | 类型                  | 默认值  | 说明             |
 | -------------- | --------------------- | ------- | ---------------- |
-| `cols`         | `1` / `2` / `3` / `4` | `1`     | 列数             |
+| `cols`         | `1` / `2` / `3` / `4` | `1`     | 宽屏列数         |
 | `narrow`       | 布尔值                | `false` | 使用较窄内容宽度 |
 | `gutterBottom` | 布尔值                | `true`  | 保留底部间距     |
 
 ## Aside {id="aside"}
 
-用于把短小、完整的 Example 放到相关正文右侧。它必须写在对应 `##` 小节的内容范围
-内；宽屏时定位到右侧，移动端自动回到正文流。
+`Aside` 用于把与当前小节直接相关的短示例放到右侧。宽屏中它位于正文右边，窄屏中自
+动回到正文流。长教程和关键步骤仍应放在正文。
+
+源码：
 
 ````mdx
 <Aside title="Example">
@@ -117,6 +179,8 @@ npm run dev
 </Aside>
 ````
 
+实际效果：
+
 <Aside title="Example">
 
 ```bash
@@ -126,19 +190,62 @@ npm run dev
 
 </Aside>
 
-一个小节可以有多个 Aside，但内容过长会挤压阅读空间。长教程应放在正文或独立页面。
+`Aside` 必须写在相关 `##` 小节内部，否则它与正文的垂直位置可能不匹配。
+
+## Tag {id="tag"}
+
+`Tag` 用于显示短状态、版本或分类，不适合承载完整句子。
+
+源码：
+
+```mdx
+当前版本 <Tag variant="new" tooltip="首次提供本地搜索">1.0</Tag>
+```
+
+实际效果：
+
+当前版本 <Tag variant="new" tooltip="首次提供本地搜索">1.0</Tag>
+
+| 属性      | 类型 / 可选值   | 默认值  | 说明               |
+| --------- | --------------- | ------- | ------------------ |
+| `variant` | `new` / `model` | 无      | 版本或模型标签样式 |
+| `tooltip` | 字符串          | 无      | 悬停或聚焦时的说明 |
+| `spaced`  | 布尔值          | `false` | 增加左右间距       |
+
+## 类型标注 {id="type-annotations"}
+
+双波浪线语法会渲染成行内类型标注，而不是删除线。类型名称存在于
+`meta/type-annotations.json` 时，还会自动链接到对应参考页面。
+
+源码：
+
+```md
+`createClient()` 返回 ~~AcmeClient~~。
+```
+
+实际效果：
+
+`createClient()` 返回 ~~AcmeClient~~。
+
+对应映射：
+
+```json
+{
+  "AcmeClient": "/writing/mdx-components#type-annotations"
+}
+```
+
+没有映射的类型仍会显示为类型样式，只是不带链接。普通删除内容不要使用双波浪线，以
+免被误认为类型标注。
 
 ## Markdown 能力 {id="markdown"}
 
-普通 Markdown 也会被自动映射渲染，包括：
+普通 Markdown 会自动使用模板样式，包括表格、列表、引用、图片、链接、代码块和标题
+锚点。代码块应标注语言，例如：
 
-- 表格、列表和引用块
-- 站内链接与外部链接
-- 图片
-- 带语言标识的代码块与行内代码
-- 带显式 `{id="..."}` 的标题锚点
+```python
+client = create_client()
+```
 
-代码块请标注语言，例如 `bash`、`json`、`tsx` 或 `python`，以获得正确高亮。
-Markdown 图片、链接和静态资源的推荐写法见 [图片与链接](/writing/assets)。
-
-接下来了解如何验证 [本地搜索](/publishing)。
+页面效果就是上方已经渲染的 Python 代码块。图片和链接的完整示例见
+[图片与链接](/writing/assets)，下一章会继续沿用这里的写法。

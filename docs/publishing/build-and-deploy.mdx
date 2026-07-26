@@ -48,6 +48,17 @@ npm run build
 
 部署目录始终是仓库根目录下的 `out/`。
 
+成功时应同时满足三项：Next.js 报告静态页面已生成，Pagefind 报告已索引页面，命令
+以退出码 0 结束。随后可以检查关键产物：
+
+```bash
+test -f out/index.html
+test -f out/pagefind/pagefind.js
+test -f out/sitemap.xml
+```
+
+三条命令都没有输出且返回成功，表示首页、搜索和 sitemap 已生成。
+
 ## 部署到 GitHub Pages {id="github-pages"}
 
 模板已包含 `.github/workflows/deploy-pages.yml`。从模板创建自己的仓库后，不需要
@@ -61,6 +72,9 @@ Pages。
 3. 在 **Build and deployment** 下将 **Source** 选择为 **GitHub Actions**
 4. 再次推送到 `main`，或在 **Actions** 页面手动运行 **Deploy GitHub Pages**
 5. 等待 `deploy` job 完成，从工作流页面或 **Settings → Pages** 打开站点
+
+Actions 页面中应依次看到 `build` 和 `deploy` 两个 job 成功。以用户 `acme` 的
+`sdk-docs` 仓库为例，最终地址应是 `https://acme.github.io/sdk-docs/`。
 
 <Aside title="Example">
 
@@ -77,6 +91,17 @@ https://<用户名>.github.io/
 ```
 
 </Aside>
+
+本地验证同一子路径时，把示例值替换成自己的仓库：
+
+```bash
+NEXT_PUBLIC_BASE_PATH=/sdk-docs \
+SITE_URL=https://acme.github.io/sdk-docs \
+npm run build
+```
+
+构建后打开 `out/sitemap.xml`，URL 应以 `https://acme.github.io/sdk-docs/` 开头；
+生成的页面资源链接应包含 `/sdk-docs/_next/`。
 
 工作流通过 `actions/configure-pages` 读取当前仓库的真实部署信息，并在构建时注入
 ：
@@ -128,6 +153,9 @@ npm run build
 GitHub Pages 工作流会自动提供前两个变量。Vercel 可回退到平台域名变量；其他公开站
 点建议显式设置 `SITE_URL`。未设置时 sitemap 使用 `http://localhost:3000`，只适合
 本地构建。
+
+不要在 `NEXT_PUBLIC_BASE_PATH` 末尾加 `/`，也不要把完整域名填进去。正确值是
+`/sdk-docs`，错误值包括 `/sdk-docs/` 和 `https://acme.github.io/sdk-docs`。
 
 ## 上线后验收 {id="acceptance"}
 

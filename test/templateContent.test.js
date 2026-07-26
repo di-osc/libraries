@@ -42,6 +42,11 @@ const sidebarLinks = (sidebars) =>
         )
     )
 
+const sectionByAnchor = (content, anchor) =>
+    content.match(
+        new RegExp(`^## .+ \\{id="${anchor}"\\}\\n([\\s\\S]*?)(?=^## |(?![\\s\\S]))`, 'm')
+    )?.[1] ?? ''
+
 describe('documentation template content', () => {
     test('keeps site sections, top navigation, and sidebars connected', () => {
         const site = readJson('meta/site.json')
@@ -93,6 +98,45 @@ describe('documentation template content', () => {
             for (const id of menuIds) {
                 expect(content).toContain(`{id="${id}"}`)
             }
+        }
+    })
+
+    test('bundled component examples pair source code with a live result', () => {
+        const guidePath = 'docs/writing/mdx-components.mdx'
+        if (!fs.existsSync(path.join(root, guidePath))) return
+
+        const guide = read(guidePath)
+        const examples = [
+            ['infobox', '<Infobox'],
+            ['button', '<Button'],
+            ['accordion', '<Accordion'],
+            ['grid', '<Grid'],
+            ['aside', '<Aside'],
+            ['tag', '<Tag'],
+            ['type-annotations', '~~AcmeClient~~'],
+        ]
+
+        for (const [anchor, sourceToken] of examples) {
+            const section = sectionByAnchor(guide, anchor)
+            expect(section).toContain('实际效果')
+            expect(section.split(sourceToken).length).toBeGreaterThanOrEqual(3)
+        }
+    })
+
+    test('bundled asset examples only render files that exist in public', () => {
+        const guidePath = 'docs/writing/assets.mdx'
+        if (!fs.existsSync(path.join(root, guidePath))) return
+
+        const guideWithoutCode = read(guidePath).replace(/```[\s\S]*?```/g, '')
+        const imagePaths = [...guideWithoutCode.matchAll(/!\[[^\]]*]\((\/[^)]+)\)/g)].map(
+            (match) => match[1]
+        )
+
+        expect(imagePaths.length).toBeGreaterThan(0)
+        for (const imagePath of imagePaths) {
+            expect(fs.existsSync(path.join(root, 'public', imagePath.replace(/^\//, '')))).toBe(
+                true
+            )
         }
     })
 

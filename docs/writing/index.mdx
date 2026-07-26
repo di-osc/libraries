@@ -13,7 +13,8 @@ menu:
 ---
 
 文档内容放在 `docs/`，页面出现在哪、按什么顺序阅读，由 `meta/sidebars.json` 决定
-。本页用新增“安装”页面演示完整流程。
+。本页沿用 [站点配置](/getting-started/site-configuration) 中已经创建的 `guide`
+分区，从新增“安装”页面开始，完成内容、路由、导航和验证的完整闭环。
 
 ## 路由规则 {id="routes"}
 
@@ -30,9 +31,18 @@ menu:
 文件系统顺序不会影响导航。`index.mdx` 是分区入口，其余文件名会直接成为 URL 的一
 部分，建议使用小写英文和连字符。
 
+<Aside title="Example">
+
+```text
+docs/guide/index.mdx        → /guide
+docs/guide/installation.mdx → /guide/installation
+```
+
+</Aside>
+
 ## 创建页面 {id="create-page"}
 
-在已有 `guide` 分区中创建 `docs/guide/installation.mdx`：
+创建 `docs/guide/installation.mdx`，写入完整页面：
 
 ````mdx
 ---
@@ -52,10 +62,11 @@ npm install @acme/sdk
 
 ## 验证安装 {id="verify"}
 
-运行项目测试并确认没有错误。
+安装完成后运行项目测试，确认 SDK 可以被正常导入。
 ````
 
-创建文件后，路由已经存在，但它还不会自动出现在左侧导航中。
+保存文件后，开发服务器会生成 `/guide/installation`。此时直接输入 URL 可以打开页
+面，但左侧导航还没有入口；下一步用 frontmatter 和侧边栏把它接入阅读路径。
 
 ## 配置 Frontmatter {id="frontmatter"}
 
@@ -87,6 +98,9 @@ menu:
 `## 安装依赖 {id="install"}`。显示文字可以不同，但 id 必须完全相同且在页面内唯一
 。模板测试会检查缺失锚点。
 
+预期页面顶部显示 `title` 和 `teaser`，右侧显示“安装依赖”“验证安装”两个小节链接。
+点击链接后，URL 分别带上 `#install` 和 `#verify`。
+
 ## 加入侧边栏 {id="sidebars"}
 
 `meta/sidebars.json` 同时控制：
@@ -116,17 +130,39 @@ menu:
 `text` 是左侧显示文字，`url` 是页面路由。一个 section 可以有多个带 `label` 的分
 组。数组顺序就是左侧顺序，也是页底“下一篇”的阅读顺序。
 
+保存后，左侧“开始使用”分组中应依次出现“概览”和“安装”，概览页底的“下一篇”应指向安
+装页。
+
 ## 新增分区 {id="new-section"}
 
-要增加例如 `project` 分区，需要同时完成三步：
+新增页面只修改文档和侧边栏；新增大章节还要连接顶部导航。以 `api` 分区为例，需要
+完成五步：
 
-1. 创建 `docs/project/index.mdx`，并设置 `section: project`。
-2. 在 `meta/site.json.sections` 中声明 `{ "id": "project", ... }`。
-3. 在 `meta/site.json.navigation` 中加入 `/project`，让它显示在右上角。
-4. 在 `meta/sidebars.json` 中新增 `"section": "project"` 的完整导航。
+1. 创建 `docs/api/index.mdx`，并设置 `section: api`。
+2. 在 `meta/site.json.sections` 中声明 `{ "id": "api", ... }`。
+3. 在 `meta/site.json.navigation` 中加入 `/api`，让它显示在右上角。
+4. 在 `meta/sidebars.json` 中新增 `"section": "api"` 的完整导航。
 5. 按需在首页卡片和页脚中加入入口。
 
 section id、目录名、frontmatter 和 sidebar section 四处必须一致。
+
+<Aside title="Example">
+
+```json
+{
+  "section": "api",
+  "items": [
+    {
+      "label": "API 参考",
+      "items": [{ "text": "API 概览", "url": "/api" }]
+    }
+  ]
+}
+```
+
+</Aside>
+
+完成后，右上角出现“API”，点击后进入 `/api`，左侧只显示 API 分区自己的页面。
 
 ## 重命名或删除 {id="rename-delete"}
 
@@ -138,6 +174,17 @@ section id、目录名、frontmatter 和 sidebar section 四处必须一致。
 
 删除页面时先从侧边栏移除链接，再删除文件。模板不会自动为旧 URL 生成重定向；已经
 公开的文档若需要兼容旧地址，应在托管平台配置重定向，或暂时保留说明页。
+
+完整重命名示例：
+
+```bash
+git mv docs/guide/installation.mdx docs/guide/setup.mdx
+rg "/guide/installation" docs meta pages
+```
+
+把搜索结果中的旧链接全部改为 `/guide/setup`，再运行测试。预期测试不再报告旧
+sidebar URL，浏览器能打开新地址。若删除页面，则先删除侧边栏条目，再用 Git 删除
+MDX 文件。
 
 ## 验证结果 {id="verify"}
 
@@ -158,5 +205,6 @@ npm run build
 - 直接刷新页面仍能打开。
 - 搜索预览能够找到新页面。
 
-写好页面后，可以用模板内置组件增强排版，详见
-[MDX 组件](/writing/mdx-components)。
+以上检查都通过后，页面才算真正接入站点。下一页
+[MDX 组件](/writing/mdx-components) 会在这个页面结构上加入提示框、按钮、折叠区和
+Example。

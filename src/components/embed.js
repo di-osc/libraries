@@ -1,12 +1,10 @@
-import React, { Fragment } from 'react'
+import React from 'react'
 import PropTypes from 'prop-types'
 import classNames from 'classnames'
 import ImageNext from 'next/image'
 
 import Link from './link'
 import Button from './button'
-import { InlineCode } from './inlineCode'
-import MarkdownToReact from './markdownToReactDynamic'
 
 import { withBasePathForUrl } from '../basePath'
 import classes from '../styles/embed.module.sass'
@@ -86,9 +84,8 @@ const Image = ({ src, alt, title, href, width = 650, ...props }) => {
     // gatsby-remark-images, i.e. mostly SVGs. The plugin adds formatting
     // and support for captions, so this normalises that behaviour.
     const linkClassNames = classNames('gatsby-resp-image-link', classes['image-link'])
-    const markdownComponents = { code: InlineCode, p: Fragment, a: Link }
     return (
-        <figure className="gatsby-resp-image-figure">
+        <span className="gatsby-resp-image-figure">
             {href ? (
                 <Link className={linkClassNames} href={href} noLinkLayout forceExternal>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -111,12 +108,8 @@ const Image = ({ src, alt, title, href, width = 650, ...props }) => {
                 />
             )}
 
-            {title && (
-                <figcaption className="gatsby-resp-image-figcaption">
-                    <MarkdownToReact markdown={title} />
-                </figcaption>
-            )}
-        </figure>
+            {title && <span className="gatsby-resp-image-figcaption">{title}</span>}
+        </span>
     )
 }
 

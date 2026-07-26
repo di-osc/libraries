@@ -1,6 +1,6 @@
 ---
 title: 图片与链接
-teaser: 正确引用静态资源、站内页面和外部地址
+teaser: 用真实资源示例掌握图片、站内链接和下载文件
 section: writing
 menu:
   - ['静态资源目录', 'public']
@@ -10,82 +10,113 @@ menu:
   - ['检查清单', 'checklist']
 ---
 
-图片和可下载文件放在 `public/`，文档中使用从站点根目录开始的 URL。模板会在
-GitHub Pages 项目站点中自动补上仓库子路径。
+上一页介绍了 MDX 组件，本页继续使用标准 Markdown。图片和下载文件放在 `public/`，
+文档中使用从站点根目录开始的 URL。示例资源已经包含在模板中，可以直接查看效果。
 
 ## 静态资源目录 {id="public"}
 
-推荐按用途分目录：
+`public/` 是静态资源根目录：构建时其中的文件会原样复制到 `out/`，公开 URL 不包含
+`public` 这一层。
+
+示例目录：
 
 ```text
 public/
 ├── images/
-│   ├── logo.svg
-│   └── quickstart/
-│       └── result.png
-└── downloads/
-    └── example-config.json
+│   └── example-diagram.svg
+└── manifest.webmanifest
 ```
 
-文件 `public/images/logo.svg` 的公开 URL 是 `/images/logo.svg`。不要在 MDX 中写
-`public/images/logo.svg`，因为 `public` 不属于公开 URL。
+因此：
 
-文件名建议使用小写英文、数字和连字符；避免空格、中文文件名和大小写混用。
+```text
+public/images/example-diagram.svg → /images/example-diagram.svg
+public/manifest.webmanifest       → /manifest.webmanifest
+```
+
+预期结果是左边的文件路径在源码中存在，右边的 URL 能在开发服务器和静态站点中访问
+。文件名建议使用小写英文、数字和连字符，避免空格和大小写混用。
 
 ## 插入图片 {id="images"}
 
-使用标准 Markdown 语法：
+标准 Markdown 图片由替代文本和资源 URL 组成：
 
-<Aside title="Example">
+源码：
 
 ```md
-![安装完成后的终端输出](/images/quickstart/result.png)
+![MDX 文档经过 Next.js 构建成为可搜索静态站点](/images/example-diagram.svg)
 ```
 
-</Aside>
+实际效果：
 
-方括号中的替代文本应描述图片传达的信息，而不是简单写“图片”。装饰性图片可以使用空
-替代文本 `![](...)`。在提交前压缩大图，截图优先使用 WebP 或 PNG，图标优先使用
-SVG。
+![MDX 文档经过 Next.js 构建成为可搜索静态站点](/images/example-diagram.svg)
 
-外部图片可以写完整 HTTPS 地址，但重要文档资源建议放入仓库，避免第三方链接失效。
+替代文本应描述图片传达的信息，而不是只写“图片”。装饰性图片可以使用空替代文本
+`![](...)`。截图优先使用 WebP 或 PNG，图标和流程图优先使用 SVG。
+
+<Infobox title="资源应随仓库保存">
+
+外部 HTTPS 图片也能显示，但重要文档资源建议放入 `public/`，避免第三方地址失效或
+阻止跨站加载。
+
+</Infobox>
 
 ## 编写链接 {id="links"}
 
-| 类型       | 写法                      | 示例                                         |
-| ---------- | ------------------------- | -------------------------------------------- |
-| 站内页面   | 从 `/` 开始，不写 `.html` | `[安装](/guide/installation)`                |
-| 当前页锚点 | `#` + 标题 id             | `[验证](#verify)`                            |
-| 外部页面   | 完整 HTTPS URL            | `[GitHub](https://github.com/)`              |
-| 下载文件   | `public/` 下的根路径      | `[下载配置](/downloads/example-config.json)` |
+链接分为站内页面、当前页锚点、外部页面和下载文件：
 
-站内链接应指向页面路由，不要写本地文件路径，例如不要写
-`../docs/guide/installation.mdx`。
+```md
+[返回模板概览](/getting-started) [跳到检查清单](#checklist)
+[访问 GitHub](https://github.com/)
+[查看 Web App manifest](/manifest.webmanifest)
+```
+
+实际效果：
+
+- [返回模板概览](/getting-started)
+- [跳到检查清单](#checklist)
+- [访问 GitHub](https://github.com/)
+- [查看 Web App manifest](/manifest.webmanifest)
+
+站内链接从 `/` 开始，不写 `.mdx` 或 `.html`；当前页锚点必须对应标题中的显式
+`{id="..."}`。外部链接写完整 HTTPS URL。不要把本地文件路径
+`../docs/guide/installation.mdx` 当成公开链接。
 
 ## GitHub Pages 子路径 {id="base-path"}
 
-普通 GitHub Pages 仓库会部署到 `/<仓库名>/`。文档仍然统一写 `/images/logo.svg`；
-模板渲染 Markdown 图片时会自动转换成：
+普通 GitHub Pages 仓库会部署到 `/<仓库名>/`。文档源码仍统一写：
+
+```md
+![流程图](/images/example-diagram.svg)
+```
+
+当构建变量为 `NEXT_PUBLIC_BASE_PATH=/libraries` 时，模板输出：
 
 ```text
-/your-repository/images/logo.svg
+/libraries/images/example-diagram.svg
 ```
 
-外链、`data:` URL、相对路径和已经带部署前缀的 URL 不会被重复修改。GitHub Actions
-会自动设置 `NEXT_PUBLIC_BASE_PATH`，通常不需要手工配置。
-
-在其他子路径托管环境中，可本地验证：
+外链、`data:` URL、相对路径和已经带部署前缀的 URL 不会被重复修改。内置 GitHub
+Actions 会自动设置这个变量；其他子路径托管环境可这样验证：
 
 ```bash
-NEXT_PUBLIC_BASE_PATH=/docs npm run build
+NEXT_PUBLIC_BASE_PATH=/docs \
+SITE_URL=https://example.com/docs \
+npm run build
 ```
+
+构建成功后，在 `out/writing/assets.html` 中应能看到带 `/docs/images/` 前缀的图片
+地址。
 
 ## 检查清单 {id="checklist"}
 
-- 开发环境和生产构建都能显示图片。
-- 图片有有意义的替代文本，尺寸不会撑破正文。
-- 站内链接没有 `.mdx` 或 `.html` 后缀。
-- 外部链接使用 HTTPS，下载文件确实存在于 `public/`。
-- 使用项目路径构建后，检查导出 HTML 中的资源地址带正确前缀。
+提交资源前逐项确认：
 
-发布后资源出现 404 时，查看 [常见问题](/publishing/troubleshooting)。
+- 开发环境和生产构建都能显示图片。
+- 图片替代文本能独立说明信息，尺寸不会撑破正文。
+- 站内链接没有 `.mdx` 或 `.html` 后缀。
+- 外部链接使用 HTTPS，下载文件真实存在于 `public/`。
+- 子路径构建后，图片、manifest 和搜索资源使用同一个前缀。
+
+至此，内容编写流程已经完成。下一步进入 [本地搜索](/publishing)，验证读者能否找到
+刚刚添加的页面。

@@ -1,117 +1,165 @@
 ---
 title: 站点配置
-teaser: 用 meta/site.json 定义站点身份、导航和页脚
+teaser: 用相互匹配的配置和页面建立 Acme SDK 文档结构
 section: getting-started
 menu:
   - ['配置文件', 'locations']
   - ['字段参考', 'fields']
-  - ['配置之间的关系', 'relationships']
-  - ['完整示例', 'example']
-  - ['修改后检查', 'verify']
+  - ['配置关系', 'relationships']
+  - ['完整配置示例', 'example']
+  - ['创建入口页面', 'documents']
+  - ['验证结果', 'verify']
 ---
 
-站点身份和全局导航集中在配置文件中。复制模板后，优先修改这些配置，而不是把站点名
-称或章节列表散落在组件里。
+上一页已经启动模板。本页以 “Acme SDK” 为例，在保留模板使用手册的同时新增“产品指
+南”大章节。这样每一步都能运行测试和预览；等自己的内容迁移完成后，再一起删除不需
+要的模板手册及其导航。
 
 ## 配置文件 {id="locations"}
 
-| 文件                          | 用途                                             |
-| ----------------------------- | ------------------------------------------------ |
-| `meta/site.json`              | 站点名称、说明、组织、仓库、分区、顶部导航、页脚 |
-| `meta/sidebars.json`          | 每个分区的分组、页面标题和顺序                   |
-| `meta/type-annotations.json`  | 类型链接映射；不需要时可保持 `{}`                |
-| `public/manifest.webmanifest` | 安装到桌面时的名称、显示方式和主题色             |
-| `pages/index.tsx`             | 首页标题、简介和入口卡片                         |
+先了解每个文件负责什么：
+
+| 文件                          | 作用                                   |
+| ----------------------------- | -------------------------------------- |
+| `meta/site.json`              | 站点身份、顶部大章节、导航和页脚       |
+| `meta/sidebars.json`          | 每个大章节的左侧分组、小页面和阅读顺序 |
+| `meta/type-annotations.json`  | 把 MDX 类型标注链接到参考页面          |
+| `public/manifest.webmanifest` | 安装到桌面时的名称、显示方式和主题色   |
+| `pages/index.tsx`             | 首页标题、说明和入口卡片               |
+
+最常修改的是前两个 JSON 文件。类型映射会在
+[MDX 组件](/writing/mdx-components#type-annotations) 中用实际效果解释，首页和
+manifest 则放到下一页 [外观定制](/getting-started/appearance)。
 
 ## 字段参考 {id="fields"}
 
-| 字段          | 必填 | 作用                             | 示例                     |
-| ------------- | ---- | -------------------------------- | ------------------------ |
-| `title`       | 是   | 浏览器标题、站点名称和页面元信息 | `"Acme SDK"`             |
-| `description` | 是   | SEO 与分享摘要                   | `"Acme SDK 中文文档"`    |
-| `slogan`      | 是   | 站点短标语                       | `"Build with Acme"`      |
-| `company`     | 是   | 页脚中的组织名称                 | `"Acme"`                 |
-| `companyUrl`  | 是   | 组织名称链接                     | `"https://acme.example"` |
-| `repo`        | 是   | GitHub 仓库，格式为 `owner/repo` | `"acme/sdk-docs"`        |
-| `theme`       | 是   | 浏览器 UI 的主题色               | `"#09a3d5"`              |
-| `sections`    | 是   | 顶部大章节及页面主题             | 见下方示例               |
-| `navigation`  | 是   | 右上角导航，可包含站内或外部链接 | 见下方示例               |
-| `footer`      | 是   | 页脚分组和链接                   | 见下方示例               |
+`meta/site.json` 的字段及实际用途如下：
 
-<Aside title="Example">
+| 字段          | 作用                                 | 示例                     |
+| ------------- | ------------------------------------ | ------------------------ |
+| `title`       | 浏览器标题、站点名称和页面元信息     | `"Acme SDK"`             |
+| `description` | SEO 与分享摘要                       | `"Acme SDK 中文文档"`    |
+| `slogan`      | 首页浏览器标题中的短标语             | `"Build with Acme"`      |
+| `company`     | 左上角和页脚中的组织名称             | `"Acme"`                 |
+| `companyUrl`  | 页脚组织链接以及外部链接识别         | `"https://acme.example"` |
+| `repo`        | 源码链接使用的 GitHub `owner/repo`   | `"acme/sdk-docs"`        |
+| `theme`       | 浏览器 UI 的十六进制主题色           | `"#0a8f6a"`              |
+| `sections`    | 大章节 id、标题和页面主题名称        | 见完整示例               |
+| `navigation`  | 右上角链接，可以是站内章节或外部页面 | 见完整示例               |
+| `footer`      | 页脚链接分组                         | 见完整示例               |
+
+`sections[].theme` 与根级 `theme` 含义不同：
 
 ```json
 {
-  "id": "api",
-  "title": "API",
-  "theme": "green"
+  "theme": "#0a8f6a",
+  "sections": [{ "id": "guide", "title": "指南", "theme": "green" }]
 }
 ```
 
-</Aside>
+- 根级 `theme` 是浏览器使用的颜色值。
+- `sections[].theme` 是模板内置样式名，可选 `blue`、`green`、`purple`、
+  `nightly` 或 `legacy`。
 
-`sections[].theme` 不是十六进制颜色，而是页面主题名称。模板内置 `blue`、
-`green`、`purple`、`nightly` 和 `legacy`，定义位于 `src/styles/layout.sass`。根
-级 `theme` 则直接用于浏览器的 `theme-color`。
+预期结果是打开 `guide` 页面时使用绿色章节样式，而浏览器地址栏或安装后的页面 UI
+使用 `#0a8f6a`。
 
-## 配置之间的关系 {id="relationships"}
+## 配置关系 {id="relationships"}
 
-- `sections[].id` 必须与文档目录名和 frontmatter 的 `section` 一致。
-- `navigation[].url` 决定右上角大章节入口，站内链接通常指向 `/<section>`。
-- `sidebars[].section` 必须引用一个已声明的 `sections[].id`。
-- 侧边栏中的 `url` 必须对应真实 MDX 路由；数组顺序也决定“下一篇”。
-- 页脚链接不会自动从章节生成，需要按需要手工维护。
+同一个大章节 id 会出现在三个配置位置和页面 URL 中：
 
-新增页面通常只改 MDX 和侧边栏；新增整个大章节则需要同时改 `sections`、
-`navigation`、`sidebars` 和 `docs/`。
+```text
+docs/guide/index.mdx
+     └─ frontmatter: section: guide
+meta/site.json
+     └─ sections[].id: guide
+meta/sidebars.json
+     └─ sidebars[].section: guide
+```
 
-## 完整示例 {id="example"}
+这些位置必须一致。`navigation[].url` 通常指向 `/guide`，侧边栏中的每个 `url` 则
+必须对应一个真实 MDX 页面。侧边栏数组顺序还决定页底“下一篇”的顺序。
+
+<Infobox title="新增页面与新增章节不同" variant="warning">
+
+在已有章节中增加页面，只需创建 MDX 并加入侧边栏；增加新的大章节，才需要同时修改
+`sections`、`navigation`、侧边栏和文档目录。
+
+</Infobox>
+
+## 完整配置示例 {id="example"}
+
+先在 `meta/site.json` 的 `sections` 数组末尾加入：
+
+```json
+{ "id": "guide", "title": "产品指南", "theme": "green" }
+```
+
+再在同一文件的 `navigation` 数组末尾加入：
+
+```json
+{ "text": "产品指南", "url": "/guide" }
+```
+
+最后在 `meta/sidebars.json` 的最外层数组末尾加入完整侧边栏对象：
 
 ```json
 {
-  "title": "Acme SDK",
-  "description": "Acme SDK 中文使用文档。",
-  "slogan": "Build with Acme",
-  "company": "Acme",
-  "companyUrl": "https://acme.example",
-  "repo": "acme/sdk-docs",
-  "theme": "#0a8f6a",
-  "sections": [
-    { "id": "guide", "title": "指南", "theme": "green" },
-    { "id": "api", "title": "API", "theme": "purple" }
-  ],
-  "navigation": [
-    { "text": "指南", "url": "/guide" },
-    { "text": "API", "url": "/api" },
-    { "text": "GitHub", "url": "https://github.com/acme/sdk" }
-  ],
-  "footer": [
+  "section": "guide",
+  "items": [
     {
-      "label": "文档",
-      "items": [
-        { "text": "快速开始", "url": "/guide" },
-        { "text": "API 参考", "url": "/api" }
-      ]
+      "label": "开始使用",
+      "items": [{ "text": "指南概览", "url": "/guide" }]
     }
   ]
 }
 ```
 
-对应的 `meta/sidebars.json` 至少要包含 `guide` 和 `api` 两个 section。
+注意前一个数组元素后要有逗号。完成后，原有“模板入门、编写文档、发布上线”仍可访问
+，右上角会多出“产品指南”，但 `/guide` 页面尚未创建。
 
-## 修改后检查 {id="verify"}
+## 创建入口页面 {id="documents"}
 
-修改配置后运行：
+创建 `docs/guide/index.mdx`：
+
+```mdx
+---
+title: 指南概览
+teaser: 从安装到第一个 Acme SDK 请求
+section: guide
+menu:
+  - ['下一步', 'next']
+---
+
+这里介绍指南覆盖的内容和适用读者。
+
+## 下一步 {id="next"}
+
+继续阅读安装说明。
+```
+
+保存后，顶部“产品指南”打开 `/guide`，左侧显示“开始使用 → 指南概览”。如果只写配置
+而不创建这个文件，测试会明确报告侧边栏 URL 找不到页面。
+
+后续新增“API”等大章节时，重复同样的四步：增加 section、增加顶部入口、增加侧边栏
+对象、创建入口 MDX。不要一次删除模板手册；确认自己的页面已经覆盖所需说明后，再同
+时删除对应 `docs/` 目录、`sections`、`navigation` 和侧边栏对象。
+
+## 验证结果 {id="verify"}
+
+在仓库根目录运行：
 
 ```bash
 npm test -- --runInBand
 npm run build
 ```
 
-测试会发现 section 不一致、侧边栏链接不存在、frontmatter 缺字段和右侧目录锚点不
-存在等问题。修改根级 `theme` 时，也建议同步
-`public/manifest.webmanifest.theme_color`；它们分别服务于浏览器页面和安装后的
-Web App 外观。
+预期结果：
 
-外观相关位置见 [外观定制](/getting-started/appearance)，完整新增页面流程见
-[添加与组织文档](/writing)。
+- 测试不报告 section、frontmatter、sidebar URL 或 menu 锚点错误。
+- 构建生成 `/guide` 静态页面。
+- 右上角新增“产品指南”，原有模板手册入口仍然可用。
+- 打开“产品指南”时使用绿色主题，左侧只显示该章节的小页面。
+
+配置结构完成后，继续 [外观定制](/getting-started/appearance)，同步修改首页和
+manifest。

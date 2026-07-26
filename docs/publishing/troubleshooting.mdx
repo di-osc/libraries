@@ -26,6 +26,16 @@ menu:
 
 重命名文件后，用 `rg "/旧路径"` 搜索首页、配置和全部文档中的遗留链接。
 
+例如，`docs/guide/install.mdx` 能通过 `/guide/install` 打开，但左侧没有入口：
+
+1. 确认页面 frontmatter 是 `section: guide`。
+2. 在 `meta/sidebars.json` 的 `guide` 分组中加入
+   `{ "text": "安装", "url": "/guide/install" }`。
+3. 运行 `npm test -- --runInBand`。
+
+测试通过并刷新页面后，左侧应出现“安装”；它所在的数组位置也会成为“上一篇/下一篇”
+的阅读顺序。
+
 ## 搜索 {id="search"}
 
 `npm run dev` 没有搜索结果是正常行为。运行：
@@ -44,6 +54,10 @@ npm run preview:search
 只在生产环境失败时，通常是部署子路径没有传给构建。GitHub Pages 应通过内置工作流
 自动注入，其他平台要设置 `NEXT_PUBLIC_BASE_PATH`。
 
+一个常见误判是：在 `npm run dev` 中新增“AcmeClient”，搜索不到就认为索引损坏。正
+确做法是停止开发服务并运行 `npm run preview:search`；Pagefind 完成索引后再搜索
+“AcmeClient”，应命中 [MDX 组件](/writing/mdx-components#type-annotations)。
+
 ## GitHub Pages {id="github-pages"}
 
 | 现象                     | 检查项                                                               |
@@ -57,6 +71,20 @@ npm run preview:search
 
 打开失败的 workflow，先查看 `build` job，再查看 `deploy` job。构建失败时部署不会
 产生有效站点；部署失败但构建成功时，重点检查 Pages 设置和权限。
+
+如果首页正常但 `/sdk-docs/images/logo.svg` 404，按下面的最小步骤定位：
+
+```bash
+NEXT_PUBLIC_BASE_PATH=/sdk-docs \
+SITE_URL=https://acme.github.io/sdk-docs \
+npm run build
+test -f out/images/logo.svg
+```
+
+- 文件不存在：图片没有放在 `public/images/logo.svg`，先修正源文件位置。
+- 文件存在但线上 404：确认 Actions 部署的是完整 `out/`，且页面中写的是
+  `/images/logo.svg`，没有手写 `/sdk-docs`。
+- 重新运行工作流后，页面最终请求应带一个且只有一个 `/sdk-docs` 前缀。
 
 ## 构建与 sitemap {id="build"}
 
@@ -75,6 +103,15 @@ NEXT_PUBLIC_BASE_PATH=/your-repository \
 SITE_URL=https://your-name.github.io/your-repository \
 npm run build
 ```
+
+构建后运行：
+
+```bash
+rg 'https://your-name.github.io/your-repository' out/sitemap.xml
+```
+
+应至少匹配首页 URL；如果仍出现 `localhost`，说明 `SITE_URL` 没有传入实际执行构建
+的同一个 shell。
 
 ## 本地端口 {id="port"}
 

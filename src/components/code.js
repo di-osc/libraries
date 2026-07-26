@@ -24,7 +24,10 @@ export default function Code({ lang = 'none', title, wrap, className, children }
         language in Prism.languages
             ? Prism.highlight(text, Prism.languages[language], language)
             : null
-    const codeClassNames = classNames(classes.code, className, `language-${language}`, {
+    const languageClassName = `language-${language}`
+    const hasLanguageClass = className?.split(/\s+/).includes(languageClassName)
+    const codeClassNames = classNames(classes.code, className, {
+        [languageClassName]: !hasLanguageClass,
         [classes.wrap]: Boolean(wrap),
     })
 
