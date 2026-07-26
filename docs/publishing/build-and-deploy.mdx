@@ -6,9 +6,9 @@ menu:
   - ['发布前检查', 'checks']
   - ['生产构建', 'build']
   - ['部署到 GitHub Pages', 'github-pages']
-  - ['部署到 Vercel', 'vercel']
-  - ['部署到静态托管', 'static']
-  - ['Sitemap 域名', 'sitemap']
+  - ['其他托管平台', 'platforms']
+  - ['环境变量', 'environment']
+  - ['上线后验收', 'acceptance']
 ---
 
 模板输出的是静态站点。只要 `out/` 构建成功，就可以部署到支持静态文件的平台。
@@ -31,6 +31,9 @@ npm run build
 - `npm run lint`：检查 TypeScript / React 代码。
 - `npm run build`：导出静态站点并生成搜索索引。
 
+还应人工检查首页、至少一个文档页、图片、站内链接和搜索。如果生产环境部署在子路径
+，使用相同的 `NEXT_PUBLIC_BASE_PATH` 做一次本地构建。
+
 ## 生产构建 {id="build"}
 
 ```bash
@@ -47,12 +50,13 @@ npm run build
 
 ## 部署到 GitHub Pages {id="github-pages"}
 
-模板已包含 `.github/workflows/deploy-pages.yml`，不需要复制额外的工作流。
-它会在每次推送到 `main` 后构建站点、上传 `out/`，再发布到 GitHub Pages。
+模板已包含 `.github/workflows/deploy-pages.yml`。从模板创建自己的仓库后，不需要
+复制额外工作流；它会在每次推送到 `main` 后构建站点、上传 `out/`，再发布到 GitHub
+Pages。
 
 首次部署按下面的顺序设置：
 
-1. 在 GitHub 创建仓库并将模板代码推送到 `main`
+1. 使用 **Use this template** 创建仓库，或将模板代码推送到新仓库的 `main`
 2. 打开仓库的 **Settings → Pages**
 3. 在 **Build and deployment** 下将 **Source** 选择为 **GitHub Actions**
 4. 再次推送到 `main`，或在 **Actions** 页面手动运行 **Deploy GitHub Pages**
@@ -74,51 +78,67 @@ https://<用户名>.github.io/
 
 </Aside>
 
-工作流通过 `actions/configure-pages` 读取当前仓库的真实部署信息，并在构建时注入：
+工作流通过 `actions/configure-pages` 读取当前仓库的真实部署信息，并在构建时注入
+：
 
 - `NEXT_PUBLIC_BASE_PATH`：普通仓库自动得到 `/<仓库名>`，根站点得到空路径
 - `SITE_URL`：用于生成带有正确公开地址的 sitemap
 
-因此无需手工填写仓库子路径。Next.js 静态资源、PWA manifest 和 Pagefind
-搜索结果都会使用同一前缀。若默认分支不是 `main`，只需修改工作流中的
-`on.push.branches`。
+因此无需手工填写仓库子路径。Next.js 静态资源、PWA manifest 和 Pagefind 搜索结果
+、文档图片都会使用同一前缀。
 
-## 部署到 Vercel {id="vercel"}
+若默认分支不是 `main`，修改工作流中的 `on.push.branches`。若 Actions 页面没有工
+作流，检查文件是否已经存在于默认分支的 `.github/workflows/` 中，以及仓库是否允许
+GitHub Actions 运行。
 
-仓库已包含 `vercel.json`：
+## 其他托管平台 {id="platforms"}
 
-```json
-{
-  "buildCommand": "npm run build",
-  "outputDirectory": "out",
-  "cleanUrls": true
-}
-```
+模板输出纯静态文件，平台的核心设置都是构建命令 `npm run build` 和发布目录
+`out`：
 
-将仓库导入 Vercel 后，直接使用默认构建设置即可。`cleanUrls` 会让
-`/getting-started` 这类路径无需显式 `.html`。
+| 平台             | 构建命令        | 发布目录       | 额外说明                              |
+| ---------------- | --------------- | -------------- | ------------------------------------- |
+| GitHub Pages     | 工作流内置      | `out`          | 自动注入仓库子路径和站点 URL          |
+| Vercel           | `npm run build` | `out`          | 仓库已有 `vercel.json` 和 `cleanUrls` |
+| Cloudflare Pages | `npm run build` | `out`          | 设置 Node.js 24 和 `SITE_URL`         |
+| Netlify          | `npm run build` | `out`          | 设置 Node.js 24 和 `SITE_URL`         |
+| 对象存储 / CDN   | 本地或 CI 构建  | 上传整个 `out` | 托管端需支持目录式 clean URL          |
 
-## 部署到静态托管 {id="static"}
-
-任意静态托管都可以：
-
-1. 运行 `npm run build`
-2. 上传或同步整个 `out/` 目录
-3. 将站点根目录指向 `out/`
-
-常见选择包括 Cloudflare Pages、Netlify 或对象存储 + CDN。
-
-## Sitemap 域名 {id="sitemap"}
-
-构建时可通过环境变量指定站点域名：
+部署在域名根路径时不设置 `NEXT_PUBLIC_BASE_PATH`。只有站点位于
+`https://example.com/docs/` 这类子路径时，才设置 `/docs`。
 
 <Aside title="Example">
 
 ```bash
-SITE_URL=https://example.com npm run build
+NEXT_PUBLIC_BASE_PATH=/docs \
+SITE_URL=https://example.com/docs \
+npm run build
 ```
 
 </Aside>
 
-未设置时，构建会回退到 Vercel 提供的域名变量，或本地默认值
-`http://localhost:3000`。公开站点建议始终显式设置 `SITE_URL`。
+## 环境变量 {id="environment"}
+
+| 变量                    | 是否必需       | 作用                               |
+| ----------------------- | -------------- | ---------------------------------- |
+| `SITE_URL`              | 公开部署推荐   | sitemap 的完整公开地址，包含子路径 |
+| `NEXT_PUBLIC_BASE_PATH` | 仅子路径部署   | Next.js、搜索和静态资源的 URL 前缀 |
+| `PORT`                  | 仅本地预览可选 | `preview:search` 使用的端口        |
+
+GitHub Pages 工作流会自动提供前两个变量。Vercel 可回退到平台域名变量；其他公开站
+点建议显式设置 `SITE_URL`。未设置时 sitemap 使用 `http://localhost:3000`，只适合
+本地构建。
+
+## 上线后验收 {id="acceptance"}
+
+不要只看到首页就认为部署完成。逐项检查：
+
+- 首页标题、卡片和外链正确。
+- 从右上角进入每个大章节，左侧链接都可用。
+- 直接访问并刷新一个二级文档 URL。
+- 图片和下载文件没有 404。
+- 搜索能找到标题、小节和正文，点击结果能到正确锚点。
+- 打开 `/sitemap.xml`，确认 URL 使用公开域名而不是 localhost。
+- 窄屏下导航、表格、代码块和 Example 可以阅读。
+
+遇到构建或线上问题时，按 [常见问题](/publishing/troubleshooting) 排查。

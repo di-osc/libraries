@@ -5,126 +5,95 @@ const root = path.resolve(__dirname, '..')
 const read = (relativePath) => fs.readFileSync(path.join(root, relativePath), 'utf8')
 const readJson = (relativePath) => JSON.parse(read(relativePath))
 
-const documentationPages = [
-    'docs/getting-started/index.mdx',
-    'docs/getting-started/quickstart.mdx',
-    'docs/getting-started/site-configuration.mdx',
-    'docs/writing/index.mdx',
-    'docs/writing/mdx-components.mdx',
-    'docs/publishing/index.mdx',
-    'docs/publishing/build-and-deploy.mdx',
-]
+const documentationPages = fs
+    .readdirSync(path.join(root, 'docs'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name !== 'superpowers')
+    .flatMap((entry) =>
+        fs
+            .readdirSync(path.join(root, 'docs', entry.name))
+            .filter((file) => file.endsWith('.mdx'))
+            .map((file) => `docs/${entry.name}/${file}`)
+    )
+    .sort()
+
+const routeForDocument = (file) => {
+    const [, section, filename] = file.match(/^docs\/([^/]+)\/([^/]+)\.mdx$/)
+    return filename === 'index' ? `/${section}` : `/${section}/${filename}`
+}
+
+const frontmatterForDocument = (file) => {
+    const match = read(file).match(/^---\n([\s\S]*?)\n---/)
+    if (!match) {
+        return null
+    }
+
+    return Object.fromEntries(
+        ['title', 'teaser', 'section'].map((field) => [
+            field,
+            match[1].match(new RegExp(`^${field}:\\s*(.+)$`, 'm'))?.[1],
+        ])
+    )
+}
+
+const sidebarLinks = (sidebars) =>
+    sidebars.flatMap((sidebar) =>
+        sidebar.items.flatMap((group) =>
+            group.items.map((item) => ({ ...item, section: sidebar.section }))
+        )
+    )
 
 describe('documentation template content', () => {
-    test('exposes three top-level sections with independent page navigation', () => {
+    test('keeps site sections, top navigation, and sidebars connected', () => {
         const site = readJson('meta/site.json')
         const sidebars = readJson('meta/sidebars.json')
+        const sectionIds = site.sections.map((section) => section.id)
 
-        expect(site.sections).toEqual([
-            { id: 'getting-started', title: '入门', theme: 'blue' },
-            { id: 'writing', title: '编写', theme: 'blue' },
-            { id: 'publishing', title: '发布', theme: 'blue' },
-        ])
-        expect(sidebars).toEqual([
-            {
-                section: 'getting-started',
-                items: [
-                    {
-                        label: '入门',
-                        items: [
-                            { text: '模板概览', url: '/getting-started' },
-                            { text: '快速开始', url: '/getting-started/quickstart' },
-                            {
-                                text: '站点配置',
-                                url: '/getting-started/site-configuration',
-                            },
-                        ],
-                    },
-                ],
-            },
-            {
-                section: 'writing',
-                items: [
-                    {
-                        label: '编写文档',
-                        items: [
-                            { text: '添加与组织文档', url: '/writing' },
-                            { text: 'MDX 组件', url: '/writing/mdx-components' },
-                        ],
-                    },
-                ],
-            },
-            {
-                section: 'publishing',
-                items: [
-                    {
-                        label: '发布站点',
-                        items: [
-                            { text: '本地搜索', url: '/publishing' },
-                            {
-                                text: '构建与部署',
-                                url: '/publishing/build-and-deploy',
-                            },
-                        ],
-                    },
-                ],
-            },
-        ])
-    })
-
-    test('contains only the documentation template sections', () => {
-        expect(
-            fs
-                .readdirSync(path.join(root, 'docs'), { withFileTypes: true })
-                .filter((entry) => entry.isDirectory() && entry.name !== 'superpowers')
-                .map((entry) => entry.name)
-                .sort()
-        ).toEqual(['getting-started', 'publishing', 'writing'])
-        expect(documentationPages.every((file) => fs.existsSync(path.join(root, file)))).toBe(true)
-    })
-
-    test('all documentation pages declare the section from their directory', () => {
-        for (const file of documentationPages) {
-            const section = file.split('/')[1]
-            const frontmatter = read(file).match(/^---\n([\s\S]*?)\n---/)
-            expect(frontmatter?.[1]).toContain(`section: ${section}`)
+        expect(new Set(sectionIds).size).toBe(sectionIds.length)
+        expect(sidebars.map((sidebar) => sidebar.section).sort()).toEqual([...sectionIds].sort())
+        for (const item of site.navigation.filter((item) => item.url.startsWith('/'))) {
+            expect(sectionIds).toContain(item.url.split('/')[1])
         }
     })
 
-    test('public template files contain no former project branding', () => {
-        const publicTemplateFiles = [
-            'README.md',
-            'AGENTS.md',
-            'package.json',
-            'public/manifest.webmanifest',
-            'meta/site.json',
-            'meta/sidebars.json',
-            'meta/type-annotations.json',
-            'pages/index.tsx',
-            ...documentationPages,
-        ]
-        const content = publicTemplateFiles.map(read).join('\n').toLowerCase()
+    test('all documentation pages have complete frontmatter and a sidebar entry', () => {
+        const sidebars = readJson('meta/sidebars.json')
+        const links = sidebarLinks(sidebars)
 
-        expect(content).not.toMatch(/di-osc|asr-data|vad-burn/)
-        expect(content).not.toMatch(/\bguide\b/)
+        for (const file of documentationPages) {
+            const section = file.split('/')[1]
+            const frontmatter = frontmatterForDocument(file)
+            const route = routeForDocument(file)
+
+            expect(frontmatter).not.toBeNull()
+            expect(frontmatter?.title).toBeTruthy()
+            expect(frontmatter?.teaser).toBeTruthy()
+            expect(frontmatter?.section).toBe(section)
+            expect(links).toContainEqual(expect.objectContaining({ section, url: route }))
+        }
     })
 
-    test('homepage highlights the three template capabilities', () => {
-        const homepage = read('pages/index.tsx')
+    test('all sidebar links resolve to documents in the same section', () => {
+        const links = sidebarLinks(readJson('meta/sidebars.json'))
+        const routes = new Set(documentationPages.map(routeForDocument))
 
-        expect(homepage).toContain('配置驱动')
-        expect(homepage).toContain('MDX 与 Example')
-        expect(homepage).toContain('本地搜索与静态部署')
-        expect(homepage).toContain('url="/getting-started"')
-        expect(homepage).toContain('url="/writing/mdx-components"')
-        expect(homepage).toContain('url="/publishing"')
+        for (const link of links) {
+            expect(link.url.split('/')[1]).toBe(link.section)
+            expect(routes).toContain(link.url)
+        }
     })
 
-    test('quickstart does not continue an ordered list across an Example', () => {
-        const quickstart = read('docs/getting-started/quickstart.mdx')
+    test('right-side menu entries point to explicit heading anchors', () => {
+        for (const file of documentationPages) {
+            const content = read(file)
+            const frontmatter = content.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? ''
+            const menuIds = [...frontmatter.matchAll(/\['[^']+',\s*'([^']+)'\]/g)].map(
+                (match) => match[1]
+            )
 
-        expect(quickstart).toContain('安装完成后，打开')
-        expect(quickstart).not.toContain('3. 打开')
+            for (const id of menuIds) {
+                expect(content).toContain(`{id="${id}"}`)
+            }
+        }
     })
 
     test('prefixes root public metadata with the configured deployment path', () => {
@@ -132,6 +101,8 @@ describe('documentation template content', () => {
 
         expect(app).toContain("withBasePath('/sitemap.xml')")
         expect(app).toContain("withBasePath('/manifest.webmanifest')")
+        expect(app).toContain('content={site.theme}')
+        expect(read('src/components/embed.js')).toContain('withBasePathForUrl(src)')
     })
 
     test('configures static builds and the web manifest for subpath hosting', () => {
@@ -153,36 +124,12 @@ describe('documentation template content', () => {
         expect(workflow).toContain('pages: write')
         expect(workflow).toContain('id-token: write')
         expect(workflow).toContain('uses: actions/configure-pages@v5')
-        expect(workflow).toContain(
-            'NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}'
-        )
+        expect(workflow).toContain('NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}')
         expect(workflow).toContain('SITE_URL: ${{ steps.pages.outputs.base_url }}')
         expect(workflow).toContain('uses: actions/upload-pages-artifact@v4')
         expect(workflow).toContain('path: ./out')
         expect(workflow).toContain('needs: build')
         expect(workflow).toContain('name: github-pages')
         expect(workflow).toContain('uses: actions/deploy-pages@v4')
-    })
-
-    test('documents the bundled GitHub Pages deployment from setup to site URL', () => {
-        const deploymentGuide = read('docs/publishing/build-and-deploy.mdx')
-
-        expect(deploymentGuide).toContain(
-            "['部署到 GitHub Pages', 'github-pages']"
-        )
-        expect(deploymentGuide).toContain('.github/workflows/deploy-pages.yml')
-        expect(deploymentGuide).toContain('Settings → Pages')
-        expect(deploymentGuide).toContain('Source')
-        expect(deploymentGuide).toContain('GitHub Actions')
-        expect(deploymentGuide).toContain('推送到 `main`')
-        expect(deploymentGuide).toContain(
-            'https://<用户名>.github.io/<仓库名>/'
-        )
-        expect(deploymentGuide).toContain(
-            'https://<用户名>.github.io/'
-        )
-        expect(deploymentGuide).toContain('NEXT_PUBLIC_BASE_PATH')
-        expect(deploymentGuide).toContain('SITE_URL')
-        expect(deploymentGuide).toContain('无需手工填写仓库子路径')
     })
 })

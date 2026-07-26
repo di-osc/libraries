@@ -3,69 +3,108 @@ title: MDX 组件
 teaser: 使用模板已注册的 Infobox、Button、Accordion 与 Grid
 section: writing
 menu:
-  - ['常用组件', 'components']
+  - ['使用原则', 'principles']
+  - ['Infobox', 'infobox']
+  - ['Button', 'button']
+  - ['Accordion', 'accordion']
+  - ['Grid', 'grid']
+  - ['Aside', 'aside']
   - ['Markdown 能力', 'markdown']
 ---
 
-模板已在 MDX 运行时注册一批常用组件。你可以在文档中直接使用，无需额外导入。
+模板已在 MDX 运行时注册一批常用组件。你可以在 `.mdx` 中直接使用，无需额外导入。
+优先使用普通 Markdown，只有语义或布局需要时才使用组件。
 
-## 常用组件 {id="components"}
+## 使用原则 {id="principles"}
 
-### Infobox
+- 示例保持短小、完整，放在相关说明之后。
+- 组件标签之间的正文前后保留空行，避免 MDX 把内容解析成普通文本。
+- 站内跳转使用以 `/` 开头的路径；外链写完整 `https://` 地址。
+- 不要只靠颜色表达危险或成功状态，标题中也要写清含义。
 
-用于补充说明或提醒：
+## Infobox {id="infobox"}
+
+用于提示、警告和高风险提醒。
 
 ```mdx
-<Infobox title="提示">
+<Infobox title="提示" emoji="💡">
 
 这里放补充说明。
 
 </Infobox>
 
-<Infobox title="注意" variant="warning">
+<Infobox title="删除前确认" variant="danger">
 
-这里放需要注意的内容。
+删除后无法从站点恢复。
 
 </Infobox>
 ```
 
-### Button
+| 属性      | 类型 / 可选值                    | 默认值    | 说明                   |
+| --------- | -------------------------------- | --------- | ---------------------- |
+| `title`   | 文本或节点                       | 无        | 提示标题               |
+| `variant` | `default` / `warning` / `danger` | `default` | 语义和视觉样式         |
+| `emoji`   | 字符串                           | 无        | 标题前的自定义图标     |
+| `id`      | 字符串                           | 无        | 允许通过 hash 直接定位 |
+| `list`    | 布尔值                           | `false`   | 适合列表内容的紧凑样式 |
 
-用于站内跳转或强调操作：
+## Button {id="button"}
+
+用于突出下一步操作或重要入口。普通正文链接不需要包装成按钮。
 
 ```mdx
 <Button to="/getting-started/quickstart" variant="primary">
-    开始使用
+  开始使用
 </Button>
 ```
 
-### Accordion
+| 属性      | 类型 / 可选值                        | 默认值      | 说明                 |
+| --------- | ------------------------------------ | ----------- | -------------------- |
+| `to`      | 字符串                               | 无          | 目标 URL             |
+| `variant` | `primary` / `secondary` / `tertiary` | `secondary` | 按钮强调级别         |
+| `large`   | 布尔值                               | `false`     | 使用大尺寸           |
+| `icon`    | 图标名                               | 无          | 在文字前显示内置图标 |
 
-用于折叠较长内容：
+## Accordion {id="accordion"}
+
+用于折叠可选细节、长配置或兼容性说明。核心步骤不要默认折叠。
 
 ```mdx
-<Accordion title="展开查看" id="accordion-example">
+<Accordion title="查看完整配置" id="full-config" expanded={false} spaced>
 
 这里放可折叠内容。
 
 </Accordion>
 ```
 
-### Grid
+| 属性       | 类型   | 默认值  | 说明               |
+| ---------- | ------ | ------- | ------------------ |
+| `title`    | 字符串 | 无      | 折叠标题           |
+| `id`       | 字符串 | 无      | 可分享的锚点       |
+| `expanded` | 布尔值 | `false` | 首次加载时是否展开 |
+| `spaced`   | 布尔值 | `false` | 增加上下留白       |
 
-用于并排放置入口或按钮：
+## Grid {id="grid"}
+
+用于并排放置同级入口。窄屏会自动换行。
 
 ```mdx
 <Grid cols={2}>
-    <Button to="/getting-started">模板概览</Button>
-    <Button to="/publishing">本地搜索</Button>
+  <Button to="/getting-started">模板概览</Button>
+  <Button to="/publishing">本地搜索</Button>
 </Grid>
 ```
 
-### Aside
+| 属性           | 类型                  | 默认值  | 说明             |
+| -------------- | --------------------- | ------- | ---------------- |
+| `cols`         | `1` / `2` / `3` / `4` | `1`     | 列数             |
+| `narrow`       | 布尔值                | `false` | 使用较窄内容宽度 |
+| `gutterBottom` | 布尔值                | `true`  | 保留底部间距     |
 
-用于把短小、完整的 Example 放到相关正文右侧。`Aside` 应位于对应的 `##` 小节内；
-移动端会自动回到正文流：
+## Aside {id="aside"}
+
+用于把短小、完整的 Example 放到相关正文右侧。它必须写在对应 `##` 小节的内容范围
+内；宽屏时定位到右侧，移动端自动回到正文流。
 
 ````mdx
 <Aside title="Example">
@@ -78,35 +117,6 @@ npm run dev
 </Aside>
 ````
 
-运行效果：
-
-<Infobox title="提示">
-
-这里放补充说明。
-
-</Infobox>
-
-<Infobox title="注意" variant="warning">
-
-这里放需要注意的内容。
-
-</Infobox>
-
-<Button to="/getting-started/quickstart" variant="primary">
-    开始使用
-</Button>
-
-<Accordion title="展开查看" id="accordion-example">
-
-这里放可折叠内容。
-
-</Accordion>
-
-<Grid cols={2}>
-    <Button to="/getting-started">模板概览</Button>
-    <Button to="/publishing">本地搜索</Button>
-</Grid>
-
 <Aside title="Example">
 
 ```bash
@@ -116,16 +126,19 @@ npm run dev
 
 </Aside>
 
+一个小节可以有多个 Aside，但内容过长会挤压阅读空间。长教程应放在正文或独立页面。
+
 ## Markdown 能力 {id="markdown"}
 
 普通 Markdown 也会被自动映射渲染，包括：
 
-- 表格
-- 引用块
+- 表格、列表和引用块
+- 站内链接与外部链接
 - 图片
-- 代码块与行内代码
-- 标题锚点
+- 带语言标识的代码块与行内代码
+- 带显式 `{id="..."}` 的标题锚点
 
-图片资源建议放在 `public/`，然后用绝对路径引用，例如 `/images/example.png`。
+代码块请标注语言，例如 `bash`、`json`、`tsx` 或 `python`，以获得正确高亮。
+Markdown 图片、链接和静态资源的推荐写法见 [图片与链接](/writing/assets)。
 
 接下来了解如何验证 [本地搜索](/publishing)。

@@ -1,0 +1,101 @@
+---
+title: 常见问题
+teaser: 排查导航、锚点、搜索、构建和 GitHub Pages 部署问题
+section: publishing
+menu:
+  - ['文档与导航', 'documents']
+  - ['搜索', 'search']
+  - ['GitHub Pages', 'github-pages']
+  - ['构建与 sitemap', 'build']
+  - ['本地端口', 'port']
+  - ['仍然无法解决', 'next']
+---
+
+排错时先复现最小问题，再检查终端或 GitHub Actions 中第一条真正的错误。后续错误往
+往只是前一个步骤失败的结果。
+
+## 文档与导航 {id="documents"}
+
+| 现象                          | 常见原因                         | 处理方式                      |
+| ----------------------------- | -------------------------------- | ----------------------------- |
+| 页面 URL 能打开但左侧没有入口 | 未加入 `meta/sidebars.json`      | 把路由加入对应 section        |
+| 测试提示 sidebar URL 不存在   | URL 与 MDX 文件路由不一致        | 按 `index.mdx` 路由规则修正   |
+| 测试提示 section 不一致       | 目录、frontmatter 或配置 id 不同 | 统一四处 section id           |
+| 右侧目录点击不滚动            | `menu` id 没有对应标题锚点       | 在 `##` 后添加 `{id="..."}`   |
+| “下一篇”顺序不对              | 误以为按文件名排序               | 调整 `sidebars.json` 数组顺序 |
+
+重命名文件后，用 `rg "/旧路径"` 搜索首页、配置和全部文档中的遗留链接。
+
+## 搜索 {id="search"}
+
+`npm run dev` 没有搜索结果是正常行为。运行：
+
+```bash
+npm run preview:search
+```
+
+如果预览仍为空：
+
+1. 确认构建日志显示 Pagefind 找到 HTML 页面。
+2. 打开浏览器网络面板，检查 `pagefind.js` 是否 404。
+3. 修改文档后重新完整构建，不要继续使用旧 `out/`。
+4. 检查自定义页面是否包含 `data-pagefind-body`。
+
+只在生产环境失败时，通常是部署子路径没有传给构建。GitHub Pages 应通过内置工作流
+自动注入，其他平台要设置 `NEXT_PUBLIC_BASE_PATH`。
+
+## GitHub Pages {id="github-pages"}
+
+| 现象                     | 检查项                                                               |
+| ------------------------ | -------------------------------------------------------------------- |
+| 推送后没有工作流         | 文件是否在 `.github/workflows/deploy-pages.yml`；分支是否匹配 `main` |
+| Pages 提示未配置来源     | **Settings → Pages → Source** 是否为 **GitHub Actions**              |
+| workflow 无部署权限      | 仓库 Actions / Pages 策略，以及 `pages: write`、`id-token: write`    |
+| 首页能开，图片或搜索 404 | 构建日志中的 `base_path`，以及是否使用内置 workflow                  |
+| 二级 URL 刷新 404        | 托管结果是否来自完整 `out/`，Pages workflow 是否成功完成             |
+| URL 指向错误仓库名       | 不要手写 base path，让 `actions/configure-pages` 提供                |
+
+打开失败的 workflow，先查看 `build` job，再查看 `deploy` job。构建失败时部署不会
+产生有效站点；部署失败但构建成功时，重点检查 Pages 设置和权限。
+
+## 构建与 sitemap {id="build"}
+
+| 现象                   | 处理方式                                   |
+| ---------------------- | ------------------------------------------ |
+| Node 版本错误          | 使用 `nvm use`，CI 设置 Node.js 24         |
+| 测试通过但构建失败     | 查看 MDX 语法、无效 JSX 标签和不存在的组件 |
+| sitemap 中是 localhost | 构建时设置完整 `SITE_URL`                  |
+| sitemap 缺少子路径     | `SITE_URL` 应包含 `/仓库名` 或实际部署目录 |
+| 静态资源带双重前缀     | 文档统一写 `/images/...`，不要硬编码仓库名 |
+
+本地模拟 GitHub Pages 项目路径：
+
+```bash
+NEXT_PUBLIC_BASE_PATH=/your-repository \
+SITE_URL=https://your-name.github.io/your-repository \
+npm run build
+```
+
+## 本地端口 {id="port"}
+
+看到 `EADDRINUSE: address already in use :::3000` 表示 3000 端口已被占用。可以停
+止旧服务，或换端口：
+
+```bash
+PORT=3001 npm run preview:search
+```
+
+Next.js 开发服务也可以使用 `npm run dev -- -p 3001`。浏览器访问的端口要与终端输
+出一致。
+
+## 仍然无法解决 {id="next"}
+
+收集以下信息再提交 issue：
+
+- 失败命令和第一段完整错误输出。
+- Node.js 与 npm 版本。
+- 本地是否能复现，还是只在托管平台发生。
+- 相关 MDX、`site.json`、`sidebars.json` 和 workflow 的最小差异。
+- 预期 URL、实际 URL，以及浏览器网络面板中的 404 地址。
+
+不要提交访问令牌、私有仓库地址或环境变量中的密钥。

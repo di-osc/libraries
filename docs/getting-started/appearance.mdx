@@ -1,0 +1,83 @@
+---
+title: 外观定制
+teaser: 修改首页、主题色、字体和站点图标
+section: getting-started
+menu:
+  - ['站点身份', 'identity']
+  - ['首页内容', 'homepage']
+  - ['章节主题', 'themes']
+  - ['字体与图标', 'assets']
+  - ['定制边界', 'boundary']
+---
+
+模板把常用品牌信息放在配置和首页中，通常不需要修改组件逻辑。建议先完成文字和颜色
+替换，再决定是否深入调整布局。
+
+## 站点身份 {id="identity"}
+
+| 位置                          | 需要替换的内容                             |
+| ----------------------------- | ------------------------------------------ |
+| `meta/site.json`              | 标题、说明、组织、仓库、主题色、导航和页脚 |
+| `public/manifest.webmanifest` | `name`、`short_name`、`theme_color`        |
+| `pages/index.tsx`             | 首页标题、说明、卡片文案和入口             |
+| `README.md`                   | 仓库对外介绍和示例地址                     |
+
+<Infobox title="先搜索占位符">
+
+可以在编辑器中搜索 `Documentation Template`、`Your Organization`、 `your-org` 和
+`example.com`，确认公开内容里没有遗留模板身份。
+
+</Infobox>
+
+## 首页内容 {id="homepage"}
+
+首页位于 `pages/index.tsx`。`LandingTitle` 是主标题，`LandingSubtitle` 是一句话
+说明，`LandingCard` 用于放置最重要的三个入口。
+
+<Aside title="Example">
+
+```tsx
+<LandingCard title="快速开始" url="/guide" button="开始使用">
+  五分钟完成安装和第一个请求。
+</LandingCard>
+```
+
+</Aside>
+
+入口卡片应指向真实页面。首页适合回答“这是什么、能做什么、下一步去哪”，详细操作步
+骤放到文档页，避免首页变成长手册。
+
+## 章节主题 {id="themes"}
+
+在 `meta/site.json` 的 `sections[].theme` 中选择页面主题：
+
+| 名称      | 适合用途             |
+| --------- | -------------------- |
+| `blue`    | 通用、技术与默认章节 |
+| `green`   | 快速开始、成功路径   |
+| `purple`  | API、进阶功能        |
+| `nightly` | 实验性或预览功能     |
+| `legacy`  | 旧版本或归档内容     |
+
+颜色变量和 `.theme-*` 类定义在 `src/styles/layout.sass`。如果新增主题名，要同时
+增加对应类和四个颜色变量：主色、深色、浅色背景和半透明背景。
+
+根级 `site.json.theme` 是浏览器 UI 颜色；manifest 的 `theme_color` 是安装后应用
+的主题色。它们不会改变章节颜色。
+
+## 字体与图标 {id="assets"}
+
+- 字体文件位于 `src/fonts/`，字体族和字重在 `src/styles/layout.sass` 定义。
+- 站点静态图片放入 `public/`，例如 `public/images/logo.svg`。
+- manifest 图标需要在 `public/manifest.webmanifest` 的 `icons` 数组中声明；模板
+  默认只提供基础 manifest，没有预置应用图标。
+- 图片引用规则和 GitHub Pages 子路径处理见 [图片与链接](/writing/assets)。
+
+## 定制边界 {id="boundary"}
+
+只替换内容和品牌时，优先停留在 `docs/`、`meta/`、`public/` 和
+`pages/index.tsx`。需要改变导航结构、Example 位置或组件视觉时，再修改
+`src/components/` 和 `src/styles/`，并补充对应测试。
+
+每次修改样式后，至少在桌面和窄屏各检查一次首页、普通文档页、长代码块和 Example
+侧栏。

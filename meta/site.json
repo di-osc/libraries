@@ -2,7 +2,6 @@
     "title": "Documentation Template",
     "description": "一个支持 MDX、静态导出和本地搜索的中文文档站模板。",
     "slogan": "Build clear documentation with MDX",
-    "domain": "example.com",
     "company": "Your Organization",
     "companyUrl": "https://github.com/your-org",
     "repo": "your-org/documentation-template",

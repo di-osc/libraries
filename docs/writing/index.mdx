@@ -4,18 +4,22 @@ teaser: 用 docs/ 与 sidebars.json 组织分区、页面和阅读顺序
 section: writing
 menu:
   - ['路由规则', 'routes']
-  - ['Frontmatter', 'frontmatter']
-  - ['侧边栏', 'sidebars']
+  - ['创建页面', 'create-page']
+  - ['配置 Frontmatter', 'frontmatter']
+  - ['加入侧边栏', 'sidebars']
   - ['新增分区', 'new-section']
+  - ['重命名或删除', 'rename-delete']
+  - ['验证结果', 'verify']
 ---
 
-文档内容放在 `docs/`，页面出现在哪、按什么顺序阅读，则由 `meta/sidebars.json` 决定。
+文档内容放在 `docs/`，页面出现在哪、按什么顺序阅读，由 `meta/sidebars.json` 决定
+。本页用新增“安装”页面演示完整流程。
 
 ## 路由规则 {id="routes"}
 
-| 文件 | 路由 |
-| --- | --- |
-| `docs/<section>/index.mdx` | `/<section>` |
+| 文件                        | 路由                |
+| --------------------------- | ------------------- |
+| `docs/<section>/index.mdx`  | `/<section>`        |
 | `docs/<section>/<page>.mdx` | `/<section>/<page>` |
 
 例如：
@@ -23,7 +27,37 @@ menu:
 - `docs/writing/index.mdx` → `/writing`
 - `docs/writing/mdx-components.mdx` → `/writing/mdx-components`
 
-## Frontmatter {id="frontmatter"}
+文件系统顺序不会影响导航。`index.mdx` 是分区入口，其余文件名会直接成为 URL 的一
+部分，建议使用小写英文和连字符。
+
+## 创建页面 {id="create-page"}
+
+在已有 `guide` 分区中创建 `docs/guide/installation.mdx`：
+
+````mdx
+---
+title: 安装
+teaser: 安装 Acme SDK 并验证环境
+section: guide
+menu:
+  - ['安装依赖', 'install']
+  - ['验证安装', 'verify']
+---
+
+## 安装依赖 {id="install"}
+
+```bash
+npm install @acme/sdk
+```
+
+## 验证安装 {id="verify"}
+
+运行项目测试并确认没有错误。
+````
+
+创建文件后，路由已经存在，但它还不会自动出现在左侧导航中。
+
+## 配置 Frontmatter {id="frontmatter"}
 
 每个 MDX 页面开头需要 frontmatter：
 
@@ -31,12 +65,12 @@ menu:
 
 ```yaml
 ---
-title: 添加与组织文档
-teaser: 用 docs/ 与 sidebars.json 组织分区、页面和阅读顺序
-section: writing
+title: 安装
+teaser: 安装 Acme SDK 并验证环境
+section: guide
 menu:
-  - ['路由规则', 'routes']
-  - ['Frontmatter', 'frontmatter']
+  - ['安装依赖', 'install']
+  - ['验证安装', 'verify']
 ---
 ```
 
@@ -47,29 +81,31 @@ menu:
 - `title`：页面标题。
 - `teaser`：页面摘要，出现在页面头部说明中。
 - `section`：所属分区，必须与目录名和 `site.json.sections[].id` 一致。
-- `menu`：可选，右侧目录；每一项是 `[显示文本, 锚点 id]`。
+- `menu`：可选，右侧小目录；每一项是 `[显示文本, 锚点 id]`。
 
-正文里用 `{id="requirements"}` 这类写法给标题加锚点，才能与 `menu` 对应。
+每个 `menu` id 都必须在正文的 `##` 标题上明确声明，例如
+`## 安装依赖 {id="install"}`。显示文字可以不同，但 id 必须完全相同且在页面内唯一
+。模板测试会检查缺失锚点。
 
-## 侧边栏 {id="sidebars"}
+## 加入侧边栏 {id="sidebars"}
 
 `meta/sidebars.json` 同时控制：
 
 - 左侧导航的分组与页面顺序
 - 文档页底部的“下一篇”顺序
 
-完整示例：
+把新页面加入对应 section 的分组：
 
 ```json
 [
   {
-    "section": "getting-started",
+    "section": "guide",
     "items": [
       {
-        "label": "入门",
+        "label": "开始使用",
         "items": [
-          { "text": "模板概览", "url": "/getting-started" },
-          { "text": "快速开始", "url": "/getting-started/quickstart" }
+          { "text": "概览", "url": "/guide" },
+          { "text": "安装", "url": "/guide/installation" }
         ]
       }
     ]
@@ -77,14 +113,50 @@ menu:
 ]
 ```
 
-只创建 MDX 文件但没有写入侧边栏时，页面可能无法出现在导航中，阅读顺序也会不完整。
+`text` 是左侧显示文字，`url` 是页面路由。一个 section 可以有多个带 `label` 的分
+组。数组顺序就是左侧顺序，也是页底“下一篇”的阅读顺序。
 
 ## 新增分区 {id="new-section"}
 
 要增加例如 `project` 分区，需要同时完成三步：
 
-1. 创建 `docs/project/index.mdx` 等页面，并设置 `section: project`。
-2. 在 `meta/site.json` 的 `sections`（以及需要时的 `navigation` / `footer`）中加入该分区。
-3. 在 `meta/sidebars.json` 中新增 `"section": "project"` 的完整导航。
+1. 创建 `docs/project/index.mdx`，并设置 `section: project`。
+2. 在 `meta/site.json.sections` 中声明 `{ "id": "project", ... }`。
+3. 在 `meta/site.json.navigation` 中加入 `/project`，让它显示在右上角。
+4. 在 `meta/sidebars.json` 中新增 `"section": "project"` 的完整导航。
+5. 按需在首页卡片和页脚中加入入口。
 
-写好页面后，可以用模板内置组件增强排版，详见 [MDX 组件](/writing/mdx-components)。
+section id、目录名、frontmatter 和 sidebar section 四处必须一致。
+
+## 重命名或删除 {id="rename-delete"}
+
+重命名页面时：
+
+1. 重命名 MDX 文件。
+2. 修改侧边栏 URL，以及正文、首页和页脚中指向旧 URL 的链接。
+3. 如果改了 section id，修改目录、所有页面 frontmatter、站点配置和侧边栏。
+
+删除页面时先从侧边栏移除链接，再删除文件。模板不会自动为旧 URL 生成重定向；已经
+公开的文档若需要兼容旧地址，应在托管平台配置重定向，或暂时保留说明页。
+
+## 验证结果 {id="verify"}
+
+<Aside title="Example">
+
+```bash
+npm test -- --runInBand
+npm run build
+```
+
+</Aside>
+
+然后打开新路由并检查：
+
+- 页面标题和摘要正确。
+- 左侧链接高亮，前后页面顺序符合预期。
+- 右侧目录点击后滚动到正确标题。
+- 直接刷新页面仍能打开。
+- 搜索预览能够找到新页面。
+
+写好页面后，可以用模板内置组件增强排版，详见
+[MDX 组件](/writing/mdx-components)。

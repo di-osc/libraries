@@ -5,11 +5,14 @@ section: getting-started
 menu:
   - ['模板能力', 'features']
   - ['目录结构', 'structure']
+  - ['配置关系', 'configuration']
+  - ['推荐使用流程', 'workflow']
   - ['下一步', 'next']
 ---
 
-这是一个可复用的中文静态文档站模板。复制仓库后，主要通过修改配置文件和
-MDX 文档，就能搭建属于自己的文档站点。
+这是一个可复用的中文静态文档站模板。它适合产品手册、SDK 文档、团队规范等以内容为
+主的站点。复制仓库后，主要通过修改 JSON 配置和 MDX 文档，就能建立自己的文档站，
+不需要先理解全部 Next.js 代码。
 
 ## 模板能力 {id="features"}
 
@@ -19,7 +22,10 @@ MDX 文档，就能搭建属于自己的文档站点。
 - **MDX 文档**：在 `docs/` 中用 Markdown 编写内容，并嵌入现成组件。
 - **响应式导航**：顶部导航、左侧边栏和页脚都由配置驱动。
 - **本地搜索**：生产构建会生成 Pagefind 索引，支持离线检索。
-- **PWA 基础配置**：`public/manifest.webmanifest` 提供站点名称与主题色。
+- **项目路径部署**：内置 GitHub Actions，普通仓库可直接发布到
+  `https://<用户名>.github.io/<仓库名>/`。
+- **Example 侧栏**：在宽屏中把简短、可执行的例子放在正文右侧，移动端自动回到正文
+  流。
 
 ## 目录结构 {id="structure"}
 
@@ -43,7 +49,34 @@ MDX 文档，就能搭建属于自己的文档站点。
 
 通常不需要改动 `src/`。只有在扩展组件或调整样式时才需要进入这里。
 
+## 配置关系 {id="configuration"}
+
+三个位置共同决定一篇文档如何出现：
+
+| 位置                   | 决定什么                       |
+| ---------------------- | ------------------------------ |
+| `docs/<section>/*.mdx` | 页面内容、标题、摘要和右侧目录 |
+| `meta/site.json`       | 顶部大章节、站点身份和页脚     |
+| `meta/sidebars.json`   | 左侧小章节、分组和“下一篇”顺序 |
+
+`section` 是它们之间的连接键。例如 `docs/writing/assets.mdx` 的 frontmatter 使用
+`section: writing`，`site.json.sections` 和 `sidebars.json` 中也都要存在
+`writing`。
+
+## 推荐使用流程 {id="workflow"}
+
+第一次使用模板时，建议按下面的顺序完成：
+
+1. 从 GitHub 模板创建自己的仓库并在本地启动站点。
+2. 替换 `meta/site.json`、manifest 和首页中的示例身份信息。
+3. 先规划大章节，再创建 MDX 页面并加入侧边栏。
+4. 用 `npm run preview:search` 验证搜索和静态导出效果。
+5. 推送到 `main`，由内置工作流部署 GitHub Pages。
+
+每次增删页面后都运行测试和生产构建。测试会检查配置、路由、frontmatter、侧边栏和
+右侧目录是否彼此一致。
+
 ## 下一步 {id="next"}
 
-从 [快速开始](/getting-started/quickstart) 安装依赖并启动开发服务器，然后依次修改
-站点配置、侧边栏和文档内容。
+从 [快速开始](/getting-started/quickstart) 创建自己的仓库并启动开发服务器。如果
+你已经运行了站点，可以直接查看 [站点配置](/getting-started/site-configuration)。

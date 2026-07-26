@@ -10,6 +10,10 @@
                     {
                         "text": "站点配置",
                         "url": "/getting-started/site-configuration"
+                    },
+                    {
+                        "text": "外观定制",
+                        "url": "/getting-started/appearance"
                     }
                 ]
             }
@@ -22,7 +26,8 @@
                 "label": "编写文档",
                 "items": [
                     { "text": "添加与组织文档", "url": "/writing" },
-                    { "text": "MDX 组件", "url": "/writing/mdx-components" }
+                    { "text": "MDX 组件", "url": "/writing/mdx-components" },
+                    { "text": "图片与链接", "url": "/writing/assets" }
                 ]
             }
         ]
@@ -37,6 +42,10 @@
                     {
                         "text": "构建与部署",
                         "url": "/publishing/build-and-deploy"
+                    },
+                    {
+                        "text": "常见问题",
+                        "url": "/publishing/troubleshooting"
                     }
                 ]
             }

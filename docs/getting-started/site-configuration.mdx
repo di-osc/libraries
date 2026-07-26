@@ -3,90 +3,115 @@ title: 站点配置
 teaser: 用 meta/site.json 定义站点身份、导航和页脚
 section: getting-started
 menu:
-  - ['配置位置', 'locations']
-  - ['site.json 字段', 'fields']
+  - ['配置文件', 'locations']
+  - ['字段参考', 'fields']
+  - ['配置之间的关系', 'relationships']
   - ['完整示例', 'example']
-  - ['主题色同步', 'theme']
+  - ['修改后检查', 'verify']
 ---
 
-站点身份和全局导航集中在配置文件中。复制模板后，优先改这里，而不是散落在页面组件里硬编码。
+站点身份和全局导航集中在配置文件中。复制模板后，优先修改这些配置，而不是把站点名
+称或章节列表散落在组件里。
 
-## 配置位置 {id="locations"}
+## 配置文件 {id="locations"}
 
-| 文件 | 用途 |
-| --- | --- |
-| `meta/site.json` | 站点名称、说明、域名、组织、仓库、分区、顶部导航、页脚 |
-| `meta/sidebars.json` | 每个分区的分组、页面标题和顺序 |
-| `meta/type-annotations.json` | 类型链接映射；不需要时可保持 `{}` |
-| `public/manifest.webmanifest` | PWA 显示名称与主题色 |
+| 文件                          | 用途                                             |
+| ----------------------------- | ------------------------------------------------ |
+| `meta/site.json`              | 站点名称、说明、组织、仓库、分区、顶部导航、页脚 |
+| `meta/sidebars.json`          | 每个分区的分组、页面标题和顺序                   |
+| `meta/type-annotations.json`  | 类型链接映射；不需要时可保持 `{}`                |
+| `public/manifest.webmanifest` | 安装到桌面时的名称、显示方式和主题色             |
+| `pages/index.tsx`             | 首页标题、简介和入口卡片                         |
 
-## site.json 字段 {id="fields"}
+## 字段参考 {id="fields"}
 
-- `title`：站点标题，出现在浏览器标签和部分页面元信息中。
-- `description`：站点说明，用于 SEO 与分享摘要。
-- `slogan`：短标语。
-- `domain`：裸域名，例如 `example.com`，不要带 `https://`。
-- `company` / `companyUrl`：组织名称与官网或组织主页。
-- `repo`：GitHub 仓库，格式为 `owner/repo`。
-- `theme`：主题色，十六进制颜色值。
-- `sections`：文档分区列表；每个分区需要 `id`、`title`、`theme`。
-- `navigation`：顶部导航链接。
-- `footer`：页脚分组与链接。
+| 字段          | 必填 | 作用                             | 示例                     |
+| ------------- | ---- | -------------------------------- | ------------------------ |
+| `title`       | 是   | 浏览器标题、站点名称和页面元信息 | `"Acme SDK"`             |
+| `description` | 是   | SEO 与分享摘要                   | `"Acme SDK 中文文档"`    |
+| `slogan`      | 是   | 站点短标语                       | `"Build with Acme"`      |
+| `company`     | 是   | 页脚中的组织名称                 | `"Acme"`                 |
+| `companyUrl`  | 是   | 组织名称链接                     | `"https://acme.example"` |
+| `repo`        | 是   | GitHub 仓库，格式为 `owner/repo` | `"acme/sdk-docs"`        |
+| `theme`       | 是   | 浏览器 UI 的主题色               | `"#09a3d5"`              |
+| `sections`    | 是   | 顶部大章节及页面主题             | 见下方示例               |
+| `navigation`  | 是   | 右上角导航，可包含站内或外部链接 | 见下方示例               |
+| `footer`      | 是   | 页脚分组和链接                   | 见下方示例               |
 
 <Aside title="Example">
 
 ```json
 {
-  "title": "My Docs",
-  "domain": "docs.example.com",
-  "company": "My Team",
-  "repo": "my-team/docs"
+  "id": "api",
+  "title": "API",
+  "theme": "green"
 }
 ```
 
 </Aside>
 
+`sections[].theme` 不是十六进制颜色，而是页面主题名称。模板内置 `blue`、
+`green`、`purple`、`nightly` 和 `legacy`，定义位于 `src/styles/layout.sass`。根
+级 `theme` 则直接用于浏览器的 `theme-color`。
+
+## 配置之间的关系 {id="relationships"}
+
+- `sections[].id` 必须与文档目录名和 frontmatter 的 `section` 一致。
+- `navigation[].url` 决定右上角大章节入口，站内链接通常指向 `/<section>`。
+- `sidebars[].section` 必须引用一个已声明的 `sections[].id`。
+- 侧边栏中的 `url` 必须对应真实 MDX 路由；数组顺序也决定“下一篇”。
+- 页脚链接不会自动从章节生成，需要按需要手工维护。
+
+新增页面通常只改 MDX 和侧边栏；新增整个大章节则需要同时改 `sections`、
+`navigation`、`sidebars` 和 `docs/`。
+
 ## 完整示例 {id="example"}
 
 ```json
 {
-  "title": "Documentation Template",
-  "description": "一个支持 MDX、静态导出和本地搜索的中文文档站模板。",
-  "slogan": "Build clear documentation with MDX",
-  "domain": "example.com",
-  "company": "Your Organization",
-  "companyUrl": "https://github.com/your-org",
-  "repo": "your-org/documentation-template",
-  "theme": "#09a3d5",
+  "title": "Acme SDK",
+  "description": "Acme SDK 中文使用文档。",
+  "slogan": "Build with Acme",
+  "company": "Acme",
+  "companyUrl": "https://acme.example",
+  "repo": "acme/sdk-docs",
+  "theme": "#0a8f6a",
   "sections": [
-    { "id": "getting-started", "title": "入门", "theme": "blue" },
-    { "id": "writing", "title": "编写", "theme": "blue" },
-    { "id": "publishing", "title": "发布", "theme": "blue" }
+    { "id": "guide", "title": "指南", "theme": "green" },
+    { "id": "api", "title": "API", "theme": "purple" }
   ],
   "navigation": [
-    { "text": "入门", "url": "/getting-started" },
-    { "text": "编写", "url": "/writing" },
-    { "text": "发布", "url": "/publishing" }
+    { "text": "指南", "url": "/guide" },
+    { "text": "API", "url": "/api" },
+    { "text": "GitHub", "url": "https://github.com/acme/sdk" }
   ],
   "footer": [
     {
       "label": "文档",
       "items": [
-        { "text": "模板概览", "url": "/getting-started" },
-        { "text": "编写文档", "url": "/writing" }
+        { "text": "快速开始", "url": "/guide" },
+        { "text": "API 参考", "url": "/api" }
       ]
     }
   ]
 }
 ```
 
-新增文档分区时，除了在 `sections` 里声明，还要在 `meta/sidebars.json` 中补充对应侧边栏。
+对应的 `meta/sidebars.json` 至少要包含 `guide` 和 `api` 两个 section。
 
-## 主题色同步 {id="theme"}
+## 修改后检查 {id="verify"}
 
-修改 `theme` 后，请同步更新：
+修改配置后运行：
 
-- `public/manifest.webmanifest` 中的 `theme_color`
-- 如有自定义应用壳样式，检查 `pages/_app.tsx` 是否需要同步主题色
+```bash
+npm test -- --runInBand
+npm run build
+```
 
-侧边栏结构说明见下一章 [添加与组织文档](/writing)。
+测试会发现 section 不一致、侧边栏链接不存在、frontmatter 缺字段和右侧目录锚点不
+存在等问题。修改根级 `theme` 时，也建议同步
+`public/manifest.webmanifest.theme_color`；它们分别服务于浏览器页面和安装后的
+Web App 外观。
+
+外观相关位置见 [外观定制](/getting-started/appearance)，完整新增页面流程见
+[添加与组织文档](/writing)。

@@ -5,19 +5,23 @@ section: publishing
 menu:
   - ['开发与预览', 'workflows']
   - ['索引范围', 'scope']
-  - ['自定义页面', 'custom']
+  - ['验证搜索', 'verify']
+  - ['更新索引', 'rebuild']
+  - ['自定义索引范围', 'custom']
+  - ['没有搜索结果', 'empty']
 ---
 
-模板使用 Pagefind 做本地搜索。索引在静态导出后生成，因此日常开发服务器默认没有搜索结果。
+模板使用 Pagefind 做本地搜索。索引在静态导出后生成，因此日常开发服务器默认没有搜
+索结果。
 
 ## 开发与预览 {id="workflows"}
 
-| 命令 | 作用 |
-| --- | --- |
-| `npm run dev` | 日常编辑预览，不生成搜索索引 |
-| `npm run preview:search` | 构建站点、生成索引并启动带搜索的预览服务 |
-| `npm run search:index` | 针对已有 `out/` 目录重建 Pagefind 索引 |
-| `npm run build` | 生产构建：静态导出 + 生成搜索索引 |
+| 命令                     | 作用                                     |
+| ------------------------ | ---------------------------------------- |
+| `npm run dev`            | 日常编辑预览，不生成搜索索引             |
+| `npm run preview:search` | 重新构建、生成索引并启动带搜索的预览服务 |
+| `npm run search:index`   | 针对已有 `out/` 目录重建 Pagefind 索引   |
+| `npm run build`          | 生产构建：静态导出 + 生成搜索索引        |
 
 验证搜索时推荐：
 
@@ -28,6 +32,10 @@ npm run preview:search
 ```
 
 </Aside>
+
+构建完成后打开 [`http://localhost:3000`](http://localhost:3000)，点击顶部“搜索文
+档” 或使用界面显示的快捷键。若端口被占用，可执行
+`PORT=3001 npm run preview:search`。
 
 ## 索引范围 {id="scope"}
 
@@ -45,11 +53,50 @@ Pagefind 会检索：
 
 因此示例代码本身通常不会进入搜索结果，而围绕示例的说明文字会进入索引。
 
-## 自定义页面 {id="custom"}
+## 验证搜索 {id="verify"}
+
+新增或大幅修改文档后，至少测试四类关键词：
+
+1. 页面标题中的唯一词，结果应打开页面顶部。
+2. `##` 小节标题中的唯一词，结果应打开对应锚点。
+3. 正文中的唯一词，结果摘要应包含附近文字。
+4. 只出现在代码块中的词，通常不应出现结果。
+
+点击当前页面的搜索结果时，搜索框应关闭并正常跳到锚点；点击其他页面结果时， URL
+和内容都应正确变化。
+
+## 更新索引 {id="rebuild"}
+
+Pagefind 索引来自 `out/`，不会随着正在运行的 `npm run dev` 自动更新。文档变化后
+：
+
+- 推荐重新运行 `npm run preview:search`，它会完整构建并启动预览。
+- 已有最新 `out/` 时，可用 `npm run search:index` 只重建索引。
+- 不确定静态页面是否最新时，不要只运行 `search:index`，应重新 `npm run build`。
+
+每次运行索引命令前，脚本都会清理旧的 `out/pagefind`，避免残留结果。
+
+## 自定义索引范围 {id="custom"}
 
 如果自己新增 React 页面，可用这些属性控制索引范围：
 
 - `data-pagefind-body`：标记应被索引的主体区域
 - `data-pagefind-ignore`：排除不应进入搜索的节点
+
+普通 MDX 文档页已经由模板正确标记，不需要手工添加。
+
+## 没有搜索结果 {id="empty"}
+
+按顺序检查：
+
+1. 当前运行的是 `preview:search`，不是 `npm run dev`。
+2. 终端构建日志中 Pagefind 已找到并索引 HTML 页面。
+3. 浏览器网络面板能加载 `/pagefind/pagefind.js`。
+4. 页面正文位于 `data-pagefind-body` 范围内，没有被 `data-pagefind-ignore` 排除
+   。
+5. 修改文档后重新生成了 `out/` 和索引。
+
+若只在 GitHub Pages 失败，重点检查仓库子路径和工作流构建环境，参见
+[常见问题](/publishing/troubleshooting)。
 
 完成搜索验证后，继续看 [构建与部署](/publishing/build-and-deploy)。

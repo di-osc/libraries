@@ -8,6 +8,7 @@ import Button from './button'
 import { InlineCode } from './inlineCode'
 import MarkdownToReact from './markdownToReactDynamic'
 
+import { withBasePathForUrl } from '../basePath'
 import classes from '../styles/embed.module.sass'
 
 const YouTube = ({ id, ratio = '16x9', className }) => {
@@ -93,7 +94,7 @@ const Image = ({ src, alt, title, href, width = 650, ...props }) => {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                         className={classes.image}
-                        src={src}
+                        src={withBasePathForUrl(src)}
                         alt={alt}
                         width={width}
                         height="auto"
@@ -101,7 +102,13 @@ const Image = ({ src, alt, title, href, width = 650, ...props }) => {
                 </Link>
             ) : (
                 /* eslint-disable-next-line @next/next/no-img-element */
-                <img className={classes.image} src={src} alt={alt} width={width} height="auto" />
+                <img
+                    className={classes.image}
+                    src={withBasePathForUrl(src)}
+                    alt={alt}
+                    width={width}
+                    height="auto"
+                />
             )}
 
             {title && (
@@ -116,9 +123,10 @@ const Image = ({ src, alt, title, href, width = 650, ...props }) => {
 const ImageScrollable = ({ src, alt, width, ...props }) => {
     return (
         <figure className={classNames(classes.standalone, classes.scrollable)}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
                 className={classes['image-scrollable']}
-                src={src}
+                src={withBasePathForUrl(src)}
                 alt={alt}
                 width={width}
                 height="auto"

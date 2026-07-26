@@ -4,8 +4,10 @@ teaser: 安装依赖并启动你的第一个文档站
 section: getting-started
 menu:
   - ['环境要求', 'requirements']
-  - ['创建站点', 'create']
-  - ['开始修改', 'customize']
+  - ['从模板创建仓库', 'create']
+  - ['在本地启动', 'local']
+  - ['第一次定制', 'customize']
+  - ['完成标准', 'done']
 ---
 
 按下面的步骤，可以在几分钟内跑起一个可编辑的文档站。
@@ -13,12 +15,33 @@ menu:
 ## 环境要求 {id="requirements"}
 
 - Node.js 24（仓库提供 `.nvmrc`，可用 `nvm use` 切换）
+- Git
 - npm（随 Node.js 安装）
 
-## 创建站点 {id="create"}
+先用 `node --version` 和 `npm --version` 确认命令可用。如果没有 `nvm`，也可以直
+接安装与 `.nvmrc` 一致的 Node.js 版本。
 
-1. 复制本模板仓库到本地。
-2. 安装依赖并启动开发服务器：
+## 从模板创建仓库 {id="create"}
+
+1. 打开模板仓库，点击右上角 **Use this template → Create a new repository**。
+2. 选择仓库所有者和名称；若准备使用 GitHub Pages，仓库可以是公开仓库。
+3. 创建完成后，复制新仓库的 Git 地址。
+
+如果 GitHub 页面没有 **Use this template**，说明源仓库尚未启用 Template
+repository。你仍可以 fork，或下载代码后推送到一个空仓库。
+
+<Aside title="Example">
+
+```bash
+git clone https://github.com/your-org/your-docs.git
+cd your-docs
+```
+
+</Aside>
+
+## 在本地启动 {id="local"}
+
+进入仓库后安装依赖并启动开发服务器：
 
 <Aside title="Example">
 
@@ -30,19 +53,38 @@ npm run dev
 
 </Aside>
 
-安装完成后，打开 [`http://localhost:3000`](http://localhost:3000)。
+终端出现 ready 提示后，打开 [`http://localhost:3000`](http://localhost:3000)。你
+应该看到模板首页，并能从右上角进入“入门”“编写”“发布”三个大章节。
 
 开发服务器适合日常写文档。它不会生成 Pagefind 搜索索引；需要验证搜索时，使用
 [本地搜索](/publishing) 中的预览命令。
 
-## 开始修改 {id="customize"}
+## 第一次定制 {id="customize"}
 
-第一次改造模板时，按这个顺序修改：
+按这个顺序替换示例内容，最不容易遗漏：
 
-1. `meta/site.json`：站点名称、说明、域名、导航和页脚。
-2. `meta/sidebars.json`：文档分区、分组与页面顺序。
-3. `docs/`：新增或改写 MDX 文档。
-4. `pages/index.tsx`：按需调整首页文案和入口卡片。
+1. 修改 `meta/site.json` 中的标题、组织、仓库、顶部导航和页脚。
+2. 同步修改 `public/manifest.webmanifest` 中的应用名称和主题色。
+3. 修改 `pages/index.tsx` 中的首页标题、说明和入口卡片。
+4. 规划自己的大章节，并同步更新 `site.json`、`sidebars.json` 和 `docs/`。
+5. 删除不需要的模板示例页，再运行测试确认没有遗留导航链接。
+
+<Infobox title="不要只改文件名" variant="warning">
+
+重命名或删除 MDX 文件时，也要同步修改 `meta/sidebars.json`。新增大章节时，还要修
+改 `meta/site.json` 的 `sections` 和 `navigation`。
+
+</Infobox>
+
+## 完成标准 {id="done"}
+
+首次定制完成后，至少检查：
+
+- 首页和浏览器标题不再显示模板占位内容。
+- 顶部每个大章节都能打开，左侧每个链接都有效。
+- 直接刷新任意文档 URL 不会得到 404。
+- `npm test -- --runInBand` 和 `npm run build` 都成功。
+- `npm run preview:search` 中能搜索到自己的页面标题和正文。
 
 详细字段说明见 [站点配置](/getting-started/site-configuration)；文档组织方式见
 [添加与组织文档](/writing)。

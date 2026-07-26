@@ -1,0 +1,91 @@
+---
+title: 图片与链接
+teaser: 正确引用静态资源、站内页面和外部地址
+section: writing
+menu:
+  - ['静态资源目录', 'public']
+  - ['插入图片', 'images']
+  - ['编写链接', 'links']
+  - ['GitHub Pages 子路径', 'base-path']
+  - ['检查清单', 'checklist']
+---
+
+图片和可下载文件放在 `public/`，文档中使用从站点根目录开始的 URL。模板会在
+GitHub Pages 项目站点中自动补上仓库子路径。
+
+## 静态资源目录 {id="public"}
+
+推荐按用途分目录：
+
+```text
+public/
+├── images/
+│   ├── logo.svg
+│   └── quickstart/
+│       └── result.png
+└── downloads/
+    └── example-config.json
+```
+
+文件 `public/images/logo.svg` 的公开 URL 是 `/images/logo.svg`。不要在 MDX 中写
+`public/images/logo.svg`，因为 `public` 不属于公开 URL。
+
+文件名建议使用小写英文、数字和连字符；避免空格、中文文件名和大小写混用。
+
+## 插入图片 {id="images"}
+
+使用标准 Markdown 语法：
+
+<Aside title="Example">
+
+```md
+![安装完成后的终端输出](/images/quickstart/result.png)
+```
+
+</Aside>
+
+方括号中的替代文本应描述图片传达的信息，而不是简单写“图片”。装饰性图片可以使用空
+替代文本 `![](...)`。在提交前压缩大图，截图优先使用 WebP 或 PNG，图标优先使用
+SVG。
+
+外部图片可以写完整 HTTPS 地址，但重要文档资源建议放入仓库，避免第三方链接失效。
+
+## 编写链接 {id="links"}
+
+| 类型       | 写法                      | 示例                                         |
+| ---------- | ------------------------- | -------------------------------------------- |
+| 站内页面   | 从 `/` 开始，不写 `.html` | `[安装](/guide/installation)`                |
+| 当前页锚点 | `#` + 标题 id             | `[验证](#verify)`                            |
+| 外部页面   | 完整 HTTPS URL            | `[GitHub](https://github.com/)`              |
+| 下载文件   | `public/` 下的根路径      | `[下载配置](/downloads/example-config.json)` |
+
+站内链接应指向页面路由，不要写本地文件路径，例如不要写
+`../docs/guide/installation.mdx`。
+
+## GitHub Pages 子路径 {id="base-path"}
+
+普通 GitHub Pages 仓库会部署到 `/<仓库名>/`。文档仍然统一写 `/images/logo.svg`；
+模板渲染 Markdown 图片时会自动转换成：
+
+```text
+/your-repository/images/logo.svg
+```
+
+外链、`data:` URL、相对路径和已经带部署前缀的 URL 不会被重复修改。GitHub Actions
+会自动设置 `NEXT_PUBLIC_BASE_PATH`，通常不需要手工配置。
+
+在其他子路径托管环境中，可本地验证：
+
+```bash
+NEXT_PUBLIC_BASE_PATH=/docs npm run build
+```
+
+## 检查清单 {id="checklist"}
+
+- 开发环境和生产构建都能显示图片。
+- 图片有有意义的替代文本，尺寸不会撑破正文。
+- 站内链接没有 `.mdx` 或 `.html` 后缀。
+- 外部链接使用 HTTPS，下载文件确实存在于 `public/`。
+- 使用项目路径构建后，检查导出 HTML 中的资源地址带正确前缀。
+
+发布后资源出现 404 时，查看 [常见问题](/publishing/troubleshooting)。
